@@ -47,29 +47,40 @@ def save_json(filename, data):
 
 def init_settings():
     global BASE_DIR, CACHE_DIR
-    settings = load_json(SETTINGS_FILE)
+    settings = load_json(SETTINGS_FILE) # 如果文件不存在，这里返回 {}
 
-    # 初始化默认值并回写，确保文件里有完整结构
     dirty = False
-    if "enabled" not in settings:
+
+    # 1. 检查总开关
+    if settings.get("enabled") is None: # 使用 is None 判断，防止 False 被覆盖
         settings["enabled"] = True
         dirty = True
-    if "auto_generate" not in settings:
+
+    # 2. 检查自动生成开关
+    if settings.get("auto_generate") is None:
         settings["auto_generate"] = True
         dirty = True
-    if "base_dir" not in settings:
+
+    # 3. 关键修复：如果 base_dir 不存在，或者它是空字符串 ""
+    # 这样既解决了新安装没有配置文件的问题，也解决了配置文件里是空值的问题
+    if not settings.get("base_dir"):
         settings["base_dir"] = DEFAULT_BASE_DIR
         dirty = True
-    if "cache_dir" not in settings:
+
+    # 4. 关键修复：同上
+    if not settings.get("cache_dir"):
         settings["cache_dir"] = DEFAULT_CACHE_DIR
         dirty = True
 
+    # 如果有改动（或者是新生成），立刻写回硬盘
     if dirty:
         save_json(SETTINGS_FILE, settings)
 
+    # 更新全局变量
     BASE_DIR = settings["base_dir"]
     CACHE_DIR = settings["cache_dir"]
 
+    # 确保文件夹物理存在
     if not os.path.exists(CACHE_DIR): os.makedirs(CACHE_DIR, exist_ok=True)
     if not os.path.exists(BASE_DIR): os.makedirs(BASE_DIR, exist_ok=True)
 
