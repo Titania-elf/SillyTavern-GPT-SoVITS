@@ -60,27 +60,17 @@
 3.  点击 **Install Extension (安装扩展)**。
 4.  在 URL 栏中粘贴本仓库的 GitHub 地址：
     ```text
-    [https://github.com/你的用户名/仓库名](https://github.com/你的用户名/仓库名)
+    https://github.com/haide-D/SillyTavern-GPT-SoVITS
     ```
 5.  点击 **Install**。安装完成后，刷新页面或重启 SillyTavern。
 6.  *此时你应该能看到界面上出现了 "🔊 TTS配置" 按钮，但点击会报错，因为后端还没启动。*
 
-### 第二步：启动后端服务 (Python)
+### 第二步：启动后端服务 (Windows 一键启动)
 
-你需要进入刚才下载的插件目录来运行后端。
-
-1.  打开你的 SillyTavern 安装目录，找到以下路径：
-    `SillyTavern/public/scripts/extensions/你的仓库名/`
-2.  在该文件夹内打开终端 (CMD / PowerShell / Terminal)。
-3.  **安装依赖** (仅首次运行需要)：
-    ```bash
-    pip install -r requirements.txt
-    ```
-4.  **启动服务**：
-    ```bash
-    python manager.py
-    ```
-    *看到 `Uvicorn running on http://127.0.0.1:3000` 字样即代表启动成功。*
+1.  进入插件目录：`SillyTavern/public/scripts/extensions/你的仓库名/`
+2.  双击运行 **`start.bat`**。
+    * *脚本会自动安装所需的 Python 依赖并启动服务。*
+3.  保持该黑色窗口开启即可。
 
 ### 第三步：启动 GPT-SoVITS
 
