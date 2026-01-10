@@ -787,7 +787,8 @@
                 VOICE_TAG_REGEX.lastIndex = 0;
                 const newHtml = html.replace(VOICE_TAG_REGEX, (match, spaceChars, name, emotion, text) => {
                     const cleanName = name.trim();
-                    const cleanText = text.trim();
+                    // 修改后的代码：先用正则去掉所有的 HTML 标签（比如 <q> 和 </q>），再去除首尾空格
+                    const cleanText = text.replace(/<[^>]+>/g, '').trim();
                     const key = BatchScheduler.getTaskKey(cleanName, cleanText);
 
                     let status = 'waiting';
