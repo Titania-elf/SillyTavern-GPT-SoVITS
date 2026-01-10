@@ -171,22 +171,36 @@ def get_data():
                     languages_map["default"] = root_refs
 
                 # 2. 扫描子文件夹 (视为语言)
+                # 2. 扫描子文件夹 (视为语言)
                 with os.scandir(ref_dir) as it:
                     for entry in it:
                         if entry.is_dir():
-                            lang_name = entry.name
+                            raw_folder_name = entry.name
+
+                            # === 新增：文件夹名称映射逻辑 ===
+                            # 将 "中文" 映射为 "Chinese"，这样前端选 Chinese 时也能读到这个文件夹
+                            target_lang_key = raw_folder_name
+                            if raw_folder_name == "中文":
+                                target_lang_key = "Chinese"
+                            # 你也可以在这里加更多映射，比如 "日语" -> "Japanese"
+                            # ============================
+
                             # 按照你的要求，音频必须在 语言文件夹/emotions 下
                             emotions_subdir = os.path.join(entry.path, "emotions")
 
+                            found_refs = [] # 临时存储找到的音频
+
                             if os.path.exists(emotions_subdir):
-                                lang_refs = scan_audio_files(emotions_subdir)
-                                if lang_refs:
-                                    languages_map[lang_name] = lang_refs
+                                found_refs = scan_audio_files(emotions_subdir)
                             else:
                                 # 如果没有 emotions 文件夹，直接扫语言文件夹本身 (可选的容错)
-                                lang_refs_direct = scan_audio_files(entry.path)
-                                if lang_refs_direct:
-                                    languages_map[lang_name] = lang_refs_direct
+                                found_refs = scan_audio_files(entry.path)
+
+                            # === 修改：合并数据而不是覆盖 ===
+                            if found_refs:
+                                if target_lang_key not in languages_map:
+                                    languages_map[target_lang_key] = []
+                                languages_map[target_lang_key].extend(found_refs)
 
             # 决定前端默认显示的列表 (如果有 default 用 default，否则用第一个语言)
             # 前端现在会接收整个 languages_map
