@@ -322,7 +322,9 @@
             $('.voice-bubble').each((_, el) => {
                 const $el = $(el);
                 if (this.getTaskKey($el.data('voice-name'), $el.data('text')) === key && $el.attr('data-status') !== 'ready') {
-                    $el.data('audio-url', audioUrl); this.updateStatus($el, 'ready');
+                    // 强制写入 HTML 属性，防止被生图插件重写 DOM 后丢失
+                    $el.attr('data-audio-url', audioUrl);
+                    this.updateStatus($el, 'ready');
                     if ($el.data('auto-play-after-gen')) { $el.click(); $el.removeData('auto-play-after-gen'); }
                 }
             });
@@ -753,7 +755,20 @@
 
         if (btn.attr('data-status') === 'ready') {
             if (window.currentAudio) { window.currentAudio.pause(); window.currentAudio = null; $('.voice-bubble').removeClass('playing'); }
-            const a = new Audio(btn.data('audio-url')); window.currentAudio = a; btn.addClass('playing'); a.onended = () => { btn.removeClass('playing'); window.currentAudio = null; }; a.play();
+
+            // 优先读取属性，读取不到再读内存
+            const audioUrl = btn.attr('data-audio-url') || btn.data('audio-url');
+
+            if (!audioUrl) {
+                // 如果 URL 真的丢了（极少数情况），回退到错误状态让用户可以重试
+                btn.attr('data-status', 'error').removeClass('playing');
+                alert("音频丢失，请刷新页面或点击重试");
+                return;
+            }
+            const a = new Audio(audioUrl);
+            window.currentAudio = a;
+            btn.addClass('playing'); a.onended = () => { btn.removeClass('playing'); window.currentAudio = null; }; a.play();
+
         }
         else if (btn.attr('data-status') === 'waiting' || btn.attr('data-status') === 'error') {
             // 总开关拦截
