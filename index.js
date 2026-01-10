@@ -541,11 +541,11 @@
                     <h4 style="margin:0 0 10px 0;">⚙️ 连接与系统设置</h4>
 
                     <div style="background:rgba(0,0,0,0.2); padding:8px; border-radius:4px; margin-bottom:8px; border:1px solid #555;">
-                        <div style="margin-bottom:5px; font-weight:bold; color:#64b5f6;">📡 远程/手机模式</div>
+                        <div style="margin-bottom:5px; font-weight:bold; color:#64b5f6;">📡 手机酒馆</div>
 
                         <label style="cursor:pointer; display:block; margin-bottom:5px;">
                             <input type="checkbox" id="tts-remote-switch" ${isRemote ? 'checked' : ''}>
-                            开启远程连接 (连接到电脑)
+                            开启远程连接 (手机酒馆连接到电脑Soviets模型,非手机酒馆勿开)
                         </label>
 
                         <div id="tts-remote-input-area" style="display:${isRemote ? 'block' : 'none'}; margin-top:5px;">
