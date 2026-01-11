@@ -519,16 +519,13 @@
             // === 修改结束 ===
 
             try {
-                // 注意：prompt_lang 这里暂时写死 zh，如果你想更高级，
-                // 可以根据 currentLang 来决定 prompt_lang (例如: Japanese -> ja, Chinese -> zh)
-                // 简单的映射逻辑：
                 let promptLangCode = "zh";
                 if (currentLang === "Japanese" || currentLang === "日语") promptLangCode = "ja";
                 if (currentLang === "English" || currentLang === "英语") promptLangCode = "en";
 
                 const params = new URLSearchParams({
                     text: text,
-                    text_lang: "zh", // 目标生成的文本语言，通常保持 zh 或根据实际情况
+                    text_lang: promptLangCode, // 目标生成的文本语言，通常保持 zh 或根据实际情况
                     ref_audio_path: ref.path,
                     prompt_text: ref.text,
                     prompt_lang: promptLangCode, // 参考音频的语言
