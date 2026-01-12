@@ -21,7 +21,10 @@
     // 最终生成的 API 地址
     const MANAGER_API = `http://${apiHost}:3000`;
 
+    // 【新增】全局变量，用于存储从文件加载的 CSS 字符串
+    let GLOBAL_STYLE_CONTENT = "";
 
+    // ... CACHE 和 CURRENT_LOADED 定义 ...
     // ===========================================
 
     let CACHE = {
@@ -30,205 +33,52 @@
     };
 
     let CURRENT_LOADED = { gpt_path: null, sovits_path: null };
-    // === 新增：Iframe 样式配置 (修复闪烁版) ===
-    // === 新增：Iframe 样式配置 (新UI容器 + 旧版波动条) ===
-    const IFRAME_CSS = `
-        .voice-bubble {
-            display: inline-flex !important; align-items: center; vertical-align: middle; margin-left: 6px;
-            background: rgba(255, 255, 255, 0.7);
-            border: 1px solid rgba(0, 0, 0, 0.1);
-            border-radius: 16px; padding: 4px 12px; cursor: pointer;
-            height: 28px; box-sizing: border-box;
-            transition: all 0.2s ease;
-            font-family: sans-serif; user-select: none;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
-            backdrop-filter: blur(2px);
 
-            min-width: 85px;
-            justify-content: space-between;
-            white-space: nowrap;
-        }
-
-
-        .sovits-voice-waves { display: flex; align-items: center; height: 16px; margin-right: 6px; gap: 2px; }
-        .sovits-voice-bar {
-            width: 3px; border-radius: 2px;
-            height: 6px; /* 默认静止高度 */
-            transition: background 0.3s, height 0.2s;
-        }
-
-        /* 3. 时间文字 */
-        .sovits-voice-duration { font-size: 12px; font-weight: 600; line-height: 1; color: #666; }
-
-        /* === 状态 A: 未生成 (Waiting) - 灰色条 === */
-        .voice-bubble[data-status="waiting"] { background: #f3f4f6; border-color: #e5e7eb; color: #888; }
-        .voice-bubble[data-status="waiting"] .sovits-voice-bar { background: #bdbdbd; height: 4px; }
-        .voice-bubble[data-status="waiting"]:hover { background: #e0e0e0; }
-
-        /* === 状态 B: 加载中 (Loading) - 呼吸灯 === */
-        .voice-bubble.loading {
-            background: #fff8e1; border-color: #ffe0b2; cursor: wait;
-            animation: tts-pulse 1.5s infinite;
-        }
-        .voice-bubble.loading .sovits-voice-bar { background: #ffb74d; height: 6px; }
-        @keyframes tts-pulse { 0% {opacity:0.6;} 50% {opacity:1;} 100% {opacity:0.6;} }
-
-        /* === 状态 C: 生成完毕 (Ready) - 绿色静止条 === */
-        .voice-bubble[data-status="ready"] {
-            background: #e8f5e9 !important;
-            border-color: #81c784 !important;
-            color: #2e7d32 !important;
-            box-shadow: 0 2px 5px rgba(76, 175, 80, 0.15);
-            animation: none !important; cursor: pointer !important; opacity: 1 !important;
-        }
-        /* 关键：把条变成绿色 */
-        .voice-bubble[data-status="ready"] .sovits-voice-bar { background: #4caf50; height: 8px; }
-        .voice-bubble[data-status="ready"]:hover {
-            transform: translateY(-1px); background: #c8e6c9 !important;
-        }
-
-        /* === 状态 D: 播放中 (Playing) - 粉色律动条 === */
-        .voice-bubble.playing {
-            background: #fff0f5 !important; border-color: #ff80ab !important;
-            color: #c2185b !important;
-            box-shadow: 0 0 12px rgba(255, 64, 129, 0.4) !important;
-            transform: scale(1.05); cursor: default;
-        }
-        /* 条变粉色，并开始跳动 */
-        .voice-bubble.playing .sovits-voice-bar {
-            background: #e91e63;
-            animation: sovits-wave-anim 1s infinite ease-in-out;
-        }
-        /* 错开动画时间，更灵动 */
-        .voice-bubble.playing .sovits-voice-bar:nth-child(1) { animation-delay: 0.0s; }
-        .voice-bubble.playing .sovits-voice-bar:nth-child(2) { animation-delay: 0.15s; }
-        .voice-bubble.playing .sovits-voice-bar:nth-child(3) { animation-delay: 0.3s; }
-
-        /* 定义波动动画 */
-        @keyframes sovits-wave-anim {
-            0%, 100% { height: 6px; opacity: 0.6; }
-            50% { height: 16px; opacity: 1; }
-        }
-    `;
-    // ===========================
+    // 【修改】注入样式函数：现在直接使用全局变量
     function injectStyles() {
-        if ($('#tts-style-injection').length > 0) return;
-        const css = `
-        /* === 1. 悬浮球按钮 === */
-        #tts-manager-btn {
-            position: fixed; top: 10px; right: 100px; z-index: 20000;
-            background: rgba(0,0,0,0.7); color: #fff; padding: 6px 12px;
-            border-radius: 4px; cursor: pointer; border: 1px solid rgba(255,255,255,0.3);
-            font-size: 13px;
-            touch-action: none; user-select: none; /* 防止拖拽滚动 */
-        }
+        // 如果 CSS 还没加载回来，或者已经注入过了，就跳过
+        if (!GLOBAL_STYLE_CONTENT || $('#tts-style-injection').length > 0) return;
 
-        /* === 2. 气泡与动画 === */
-        #tts-notification-bar {
-            position: fixed; top: -50px; left: 50%; transform: translateX(-50%);
-            z-index: 20005; background: #d32f2f; color: white;
-            padding: 8px 20px; border-radius: 4px; box-shadow: 0 2px 10px rgba(0,0,0,0.3);
-            font-size: 14px; transition: top 0.5s ease; pointer-events: none;
-            display: flex; align-items: center; gap: 8px; width: 90%; justify-content: center;
-        }
-        #tts-notification-bar.show { top: 20px; }
-
-        .voice-bubble {
-            display: inline-flex; vertical-align: text-bottom; align-items: center; gap: 6px;
-            padding: 1px 6px; background: #c6e2b8; border-radius: 4px; cursor: pointer;
-            user-select: none; min-width: 40px; max-width: 250px; height: 24px;
-            box-sizing: border-box; margin: 0 1px 0 3px; position: relative;
-            box-shadow: 0 1px 1px rgba(0,0,0,0.1); white-space: nowrap; font-size: 13px;
-        }
-        .voice-bubble:hover { filter: brightness(0.95); }
-        .voice-bubble.playing .sovits-voice-bar { animation: sovits-wave-anim 1.2s infinite ease-in-out; }
-        .sovits-voice-waves { display: flex; align-items: center; justify-content: flex-end; gap: 2px; width: 18px; height: 16px; }
-        .sovits-voice-bar { width: 3px; background: #333; border-radius: 1.5px; opacity: 0.8; height: 6px; }
-        @keyframes sovits-wave-anim {
-            0%, 100% { height: 6px; opacity: 0.5; }
-            50% { height: 14px; opacity: 1; }
-        }
-        .voice-bubble.error { background: #ffcccc !important; border: 1px solid #ffaaaa; }
-        .voice-bubble.loading { opacity: 0.6; filter: grayscale(0.5); cursor: wait; }
-
-        /* === 3. 控制面板样式 (修复手机显示不全) === */
-        .tts-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0, 0, 0, 0.6); z-index: 20001;
-            /* 关键修改1：父容器只负责铺满，不负责强制对齐 */
-            display: flex;
-            /* 允许点击遮罩层关闭时的触摸穿透处理（可选） */
-        }
-        .tts-panel {
-            background: #2b2b2b; color: #eee;
-
-            /* 关键修改2：使用 margin: auto 实现“智能居中” */
-            /* 空间够时它会居中；空间不够(如下半部分被键盘顶住)时，它会优先显示顶部 */
-            margin: auto;
-
-            width: 95%;
-            max-width: 500px;
-
-            /* 关键修改3：降低最大高度，给手机浏览器地址栏和底部工具栏留余地 */
-            max-height: 75vh;
-
-            border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.5);
-
-            /* 关键修改4：确保伸缩布局正确，让中间内容区能滚动 */
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-            border: 1px solid #444; font-family: sans-serif;
-        }
-        .tts-header {
-            padding: 12px 15px; background: #222; border-bottom: 1px solid #444;
-            display: flex; justify-content: space-between; align-items: center;
-            flex-shrink: 0; /* 防止头部被压缩 */
-        }
-        .tts-header h3 { margin: 0; font-size: 16px; }
-        .tts-close {
-            background: none; border: none; color: #aaa; font-size: 24px;
-            cursor: pointer; line-height: 1; padding: 0 5px;
-        }
-        .tts-content {
-            padding: 15px;
-            /* 关键修改5：flex: 1 让这个区域自动填满剩余空间，并负责滚动 */
-            flex: 1;
-            overflow-y: auto;
-            min-height: 0; /* 防止 flex 子项无法滚动的兼容性 bug */
-            -webkit-overflow-scrolling: touch;
-        }
-
-        .tts-settings-zone input[type="text"] {
-            background: #1a1a1a; border: 1px solid #444; color: #fff;
-            padding: 4px; border-radius: 3px; margin-top: 2px;
-        }
-        .tts-add-zone, .tts-list-zone { margin-top: 15px; }
-
-        /* 让输入框在手机上自动换行，避免挤压 */
-        .tts-row { display: flex; gap: 8px; margin-bottom: 8px; align-items: center; flex-wrap: wrap; }
-        .tts-sub-row { display: flex; gap: 8px; margin-bottom: 8px; align-items: center; flex-wrap: wrap; }
-
-        .tts-row input, .tts-row select {
-            flex: 1; background: #333; color: white; border: 1px solid #555; padding: 8px 5px; /* 手机上增加点点击区域 */
-            min-width: 100px; /* 防止缩得太小 */
-        }
-        .tts-list-container {
-            border: 1px solid #444; background: #1f1f1f; max-height: 200px; overflow-y: auto;
-            border-radius: 4px;
-        }
-        .tts-list-item {
-            display: flex; justify-content: space-between; padding: 8px;
-            border-bottom: 1px solid #333; align-items: center; font-size: 13px;
-        }
-        .tts-list-item:last-child { border-bottom: none; }
-        .col-name { font-weight: bold; color: #81c784; }
-        .col-model { color: #aaa; margin-left: 10px; flex: 1; word-break: break-all; /* 防止长路径撑开 */ }
-        .btn-blue { background: #1976d2; color: white; border: none; border-radius: 3px; cursor: pointer; padding: 6px 12px;}
-        .btn-red { background: #d32f2f; color: white; border: none; padding: 4px 10px; border-radius: 3px; cursor: pointer; }
-    `;
-        $('head').append(`<style id="tts-style-injection">${css}</style>`);
+        $('head').append(`<style id="tts-style-injection">${GLOBAL_STYLE_CONTENT}</style>`);
     }
+    // 【修改】从后端加载 CSS 文件 (增强版)
+    async function loadGlobalCSS() {
+        try {
+            const res = await fetch(`${MANAGER_API}/static/css/style.css`);
+            if (res.ok) {
+                GLOBAL_STYLE_CONTENT = await res.text();
+                console.log("[TTS] Style loaded successfully.");
+
+                // 1. 立即注入主界面
+                injectStyles();
+
+                // 2. 【核心修复】CSS到位后，强制重新扫描一遍 Iframe 并注入
+                // 因为之前页面刚加载时 CSS 是空的，导致 Iframe 也是“裸奔”状态
+                // 重新调用这个主逻辑函数，它会读取现在有值的 GLOBAL_STYLE_CONTENT 并注入
+                processMessageContent();
+
+                // 3. 【双重保险】手动遍历现有 iframe 强行注入
+                // 防止 processMessageContent 因为某些防抖逻辑没立刻执行
+                $('iframe').each(function() {
+                    try {
+                        const head = $(this).contents().find('head');
+                        if (head.length > 0 && head.find('#sovits-iframe-style').length === 0) {
+                            head.append(`<style id='sovits-iframe-style'>${GLOBAL_STYLE_CONTENT}</style>`);
+                        }
+                    } catch(e) { /* 忽略跨域错误 */ }
+                });
+
+            } else {
+                console.error("[TTS] Failed to load style.css. Status:", res.status);
+            }
+        } catch (e) {
+            console.error("[TTS] CSS Load Error:", e);
+        }
+    }
+
+    // 【新增】启动时立即加载 CSS
+    loadGlobalCSS();
+
     // 新增：显示顶部提示
     function showNotification(msg, type = 'error') {
         let $bar = $('#tts-notification-bar');
@@ -937,9 +787,9 @@
                     const head = doc.find('head');
                     const body = doc.find('body');
 
-                    // [A] 注入新版 CSS
-                    if (head.length > 0 && head.find('#sovits-iframe-style').length === 0) {
-                        head.append(`<style id='sovits-iframe-style'>${IFRAME_CSS}</style>`);
+                    // 必须确保 GLOBAL_STYLE_CONTENT 有值才执行注入，否则会注入 undefined 或空标签
+                    if (GLOBAL_STYLE_CONTENT && head.length > 0 && head.find('#sovits-iframe-style').length === 0) {
+                        head.append(`<style id='sovits-iframe-style'>${GLOBAL_STYLE_CONTENT}</style>`);
                     }
 
                     // [B] 绑定事件
@@ -1018,9 +868,9 @@
             // 模式 B: 普通卡 (mes_text)
             // ========================================
 
-            // [A] 确保普通界面也拥有新版 CSS (统一 UI)
-            if ($('#sovits-iframe-style-main').length === 0) {
-                $('head').append(`<style id='sovits-iframe-style-main'>${IFRAME_CSS}</style>`);
+            // 【修改】使用全局 CSS 变量补全主界面样式 (防止 injectStyles 漏网)
+            if (GLOBAL_STYLE_CONTENT && $('#sovits-iframe-style-main').length === 0) {
+                $('head').append(`<style id='sovits-iframe-style-main'>${GLOBAL_STYLE_CONTENT}</style>`);
             }
 
             $('.mes_text').each(function() {

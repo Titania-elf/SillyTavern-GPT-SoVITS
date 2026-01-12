@@ -9,6 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel
 from typing import Optional
+from fastapi.staticfiles import StaticFiles
 
 # ================= 配置区域 =================
 PLUGIN_ROOT = os.path.dirname(os.path.abspath(__file__))
@@ -29,6 +30,15 @@ app = FastAPI()
 app.add_middleware(
     CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"],
 )
+# 获取 manager.py 所在的绝对路径，确保路径拼接不出错
+PLUGIN_ROOT = os.path.dirname(os.path.abspath(__file__))
+FRONTEND_DIR = os.path.join(PLUGIN_ROOT, "frontend")
+
+# 检查文件夹是否存在，防止报错
+if os.path.exists(FRONTEND_DIR):
+    app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")
+else:
+    print("Warning: 'frontend' folder not found. CSS/JS files will not load.")
 
 # --- 辅助函数 ---
 def load_json(filename):
