@@ -18,3 +18,6 @@ class SettingsRequest(BaseModel):
     cache_dir: Optional[str] = None
     default_lang: Optional[str] = None
     iframe_mode: Optional[bool] = None
+
+class StyleRequest(BaseModel):
+    style: str

@@ -42,7 +42,8 @@ def init_settings():
         "base_dir": DEFAULT_BASE_DIR,
         "cache_dir": DEFAULT_CACHE_DIR,
         "default_lang": "Chinese",
-        "iframe_mode": False
+        "iframe_mode": False,
+        "bubble_style": "default"
     }
 
     for key, val in defaults.items():

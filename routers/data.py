@@ -1,9 +1,9 @@
 import os
 import glob
 from fastapi import APIRouter
-from config import init_settings, load_json, save_json, get_current_dirs, MAPPINGS_FILE
+from config import init_settings, load_json, save_json, get_current_dirs, MAPPINGS_FILE, SETTINGS_FILE
 from utils import scan_audio_files
-from schemas import BindRequest, UnbindRequest, CreateModelRequest
+from schemas import BindRequest, UnbindRequest, CreateModelRequest, StyleRequest
 
 router = APIRouter()
 
@@ -91,3 +91,15 @@ def create(req: CreateModelRequest):
     os.makedirs(ref_root, exist_ok=True) # 确保根目录存在
 
     return {"status": "success"}
+@router.post("/save_style")
+def save_style(req: StyleRequest):
+    # 1. 读取现有的系统设置
+    settings = load_json(SETTINGS_FILE)
+
+    # 2. 更新风格字段
+    settings["bubble_style"] = req.style
+
+    # 3. 写回 system_settings.json
+    save_json(SETTINGS_FILE, settings)
+
+    return {"status": "success", "current_style": req.style}

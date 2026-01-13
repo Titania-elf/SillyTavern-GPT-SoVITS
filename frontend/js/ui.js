@@ -40,6 +40,8 @@ window.TTS_UI = window.TTS_UI || {};
         const isRemote = config.useRemote;
         const remoteIP = config.ip;
 
+        const currentStyle = localStorage.getItem('tts_bubble_style') || 'default';
+
         const html = `
         <div id="tts-dashboard-overlay" class="tts-overlay">
             <div id="tts-dashboard" class="tts-panel">
@@ -85,6 +87,24 @@ window.TTS_UI = window.TTS_UI || {};
                                     <input type="checkbox" id="tts-iframe-switch" ${settings.iframe_mode ? 'checked' : ''}>
                                     启用美化卡/Iframe模式
                                 </label>
+                            </div>
+                            <div class="tts-row" style="align-items: flex-start; flex-direction: column; gap: 8px;">
+                                <span style="font-size: 13px; color: #ccc;">气泡风格 (Bubble Style)</span>
+
+                                <div class="tts-custom-select" id="style-dropdown">
+                                    <div class="select-trigger" data-value="default">
+                                        <span>🌿 森野·极简</span>
+                                        <i class="arrow-icon">▼</i>
+                                    </div>
+
+                                    <div class="select-options">
+                                        <div class="option-item" data-value="default">🌿 森野·极简</div>
+                                        <div class="option-item" data-value="classic">📼 旧日·回溯</div>
+                                        <div class="option-item" data-value="kawaii">💎 幻彩·琉璃</div>
+                                        </div>
+                                </div>
+
+                                <input type="hidden" id="style-selector" value="default">
                             </div>
                             <div class="tts-row-input">
                                 <small>模型文件夹 (绝对路径):</small>
@@ -165,6 +185,22 @@ window.TTS_UI = window.TTS_UI || {};
             }
         });
 
+        // ===========================================
+        // ✅ 【新增】自定义下拉菜单初始化 (回显修正)
+        // ===========================================
+        const currentStyle = (CTX.CACHE.settings && CTX.CACHE.settings.bubble_style)
+        || document.body.getAttribute('data-bubble-style')
+        || 'default';
+
+        // 1. 根据当前的 style 值 (如 'kawaii')，去选项列表里找对应的元素
+        const $targetOption = $(`.option-item[data-value="${currentStyle}"]`);
+
+        // 2. 如果找到了，就把它的文字 (如 '💎 幻彩·琉璃') 填进显示框里
+        if ($targetOption.length > 0) {
+            $('#style-dropdown .select-trigger span').text($targetOption.text()); // 更新文字
+            $('#style-dropdown .select-trigger').attr('data-value', currentStyle); // 更新颜色
+            $('#style-selector').val(currentStyle); // 更新隐藏域
+        }
         // 远程连接开关
         $('#tts-remote-switch').change(function() {
             const checked = $(this).is(':checked');

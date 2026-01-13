@@ -32,6 +32,11 @@
     function initPlugin() {
         console.log("✅ [TTS] 开始初始化插件核心...");
 
+        const cachedStyle = localStorage.getItem('tts_bubble_style');
+        if (cachedStyle) {
+            document.body.setAttribute('data-bubble-style', cachedStyle);
+        }
+
         // 1. 模块初始化 (确保所有子模块的 init 方法都被调用)
         if (window.TTS_API) window.TTS_API.init(MANAGER_API);
         if (window.TTS_State) window.TTS_State.init();
@@ -43,6 +48,9 @@
         const TTS_Utils = window.TTS_Utils;
         const CACHE = window.TTS_State.CACHE;
         const Scheduler = window.TTS_Scheduler;
+
+        const savedStyle = localStorage.getItem('tts_bubble_style') || 'default';
+        document.body.setAttribute('data-bubble-style', savedStyle);
 
         // 3. 加载全局 CSS
         TTS_Utils.loadGlobalCSS(`${MANAGER_API}/static/css/style.css?t=${new Date().getTime()}`, (cssContent) => {
@@ -73,6 +81,28 @@
                 CACHE.mappings = data.mappings;
                 if (data.settings) CACHE.settings = { ...CACHE.settings, ...data.settings };
 
+                if (CACHE.settings.bubble_style) {
+                    // 1. 应用到 body 标签，让页面气泡立刻变色
+                    document.body.setAttribute('data-bubble-style', CACHE.settings.bubble_style);
+
+                    // 2. 存入本地缓存
+                    localStorage.setItem('tts_bubble_style', CACHE.settings.bubble_style);
+
+                    // ============================================================
+                    // ✨ 【核心修改】适配自定义下拉菜单的回显逻辑
+                    // ============================================================
+                    const currentStyle = CACHE.settings.bubble_style || 'default';
+                    const $trigger = $('.select-trigger'); // 获取下拉框的显示条
+                    const $targetOption = $(`.option-item[data-value="${currentStyle}"]`); // 找到对应的选项
+
+                    if ($targetOption.length > 0) {
+                        // (1) 把显示条的文字变成对应的名字（例如 "💎 幻彩·琉璃"）
+                        $trigger.find('span').text($targetOption.text());
+                        // (2) 修改 data-value，触发 CSS 变色（变绿/变粉）
+                        $trigger.attr('data-value', currentStyle);
+                    }
+                }
+
                 // 强制覆盖 iframe_mode
                 const localIframeMode = localStorage.getItem('tts_plugin_iframe_mode');
                 if (localIframeMode !== null) CACHE.settings.iframe_mode = (localIframeMode === 'true');
@@ -95,6 +125,18 @@
                 $('#tts-manager-btn').css({ 'border-color': '#ff5252', 'color': '#ff5252' }).text('⚠️ TTS断开');
             }
         }
+        // 【新增】: 切换气泡风格的回调函数
+        async function toggleBubbleStyle(checked) {
+            if (checked) {
+                document.body.classList.add('use-classic-style');
+                localStorage.setItem('tts_style_classic', 'true');
+            } else {
+                document.body.classList.remove('use-classic-style');
+                localStorage.setItem('tts_style_classic', 'false');
+            }
+            // 触发一次扫描，确保样式更新（有时需要重绘）
+            if (window.TTS_Parser) window.TTS_Parser.scan();
+        }
 
         async function toggleMasterSwitch(checked) {
             CACHE.settings.enabled = checked;
@@ -109,7 +151,36 @@
                 if (checked && CACHE.settings.enabled !== false) Scheduler.scanAndSchedule();
             } catch(e) {}
         }
+        // 【修改后的完整函数】
+        async function changeBubbleStyle(styleName) {
+            console.log("🎨 正在切换风格为:", styleName);
 
+            // 1. 立即在前端生效 (无延迟体验)
+            document.body.setAttribute('data-bubble-style', styleName);
+            localStorage.setItem('tts_bubble_style', styleName);
+
+            // 2. 发送到后端保存到 system_settings.json
+            try {
+                // 注意：MANAGER_API 已经在 index.js 开头定义了，通常是 http://127.0.0.1:3000
+                const response = await fetch(`${MANAGER_API}/save_style`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ style: styleName })
+                });
+
+                const res = await response.json();
+                if(res.status === 'success') {
+                    console.log("✅ 风格已永久保存:", styleName);
+
+                    // 更新本地缓存里的 settings，防止刷新前出现数据不一致
+                    if(window.TTS_State && window.TTS_State.CACHE.settings) {
+                        window.TTS_State.CACHE.settings.bubble_style = styleName;
+                    }
+                }
+            } catch(e) {
+                console.error("❌ 保存风格失败:", e);
+            }
+        }
         async function saveSettings(base, cache) {
             const b = base !== undefined ? base : $('#tts-base-path').val().trim();
             const c = cache !== undefined ? cache : $('#tts-cache-path').val().trim();
@@ -125,9 +196,41 @@
                 CACHE: CACHE,
                 API_URL: MANAGER_API,
                 Utils: TTS_Utils,
-                Callbacks: { refreshData, saveSettings, toggleMasterSwitch, toggleAutoGenerate }
+                Callbacks: { refreshData, saveSettings, toggleMasterSwitch, toggleAutoGenerate, changeBubbleStyle }
             });
         }
+        // ============================================================
+        // 【新增】自定义下拉菜单交互逻辑
+        // ============================================================
+
+        // 1. 点击触发器：切换菜单展开/收起
+        $('body').on('click', '.select-trigger', function(e) {
+            e.stopPropagation(); // 阻止冒泡
+            $(this).parent('.tts-custom-select').toggleClass('open');
+        });
+
+        // 2. 点击选项：选中并关闭
+        $('body').on('click', '.option-item', function() {
+            const val = $(this).attr('data-value');
+            const text = $(this).text();
+            const $wrapper = $(this).closest('.tts-custom-select');
+
+            // 更新触发器的文字和 data-value (触发 CSS 变色)
+            const $trigger = $wrapper.find('.select-trigger');
+            $trigger.find('span').text(text);
+            $trigger.attr('data-value', val); // 这一步会让 Trigger 变成对应的颜色
+
+            // 关闭菜单
+            $wrapper.removeClass('open');
+
+            // 执行核心切换逻辑
+            changeBubbleStyle(val);
+        });
+
+        // 3. 点击页面其他地方：自动关闭菜单
+        $(document).on('click', function() {
+            $('.tts-custom-select').removeClass('open');
+        });
 
         // 6. 启动心跳看门狗
         function runWatchdog() {
