@@ -144,8 +144,230 @@ body[data-bubble-style="bloom"] {
 
     --wave-bar-playing: rgba(255, 255, 255, 0.9);
 }
+/* --- 5. 黑曜石 · 极夜 (Obsidian) --- */
+body[data-bubble-style="obsidian"] {
+    --bubble-height: 24px;
+    --bubble-radius: 6px; /* 较小的圆角，显得干练硬朗 */
+    --bubble-padding: 0 10px;
+    --bubble-margin: 0 3px;
+    --bubble-font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --bubble-backdrop: blur(10px) saturate(180%); /* 强磨砂玻璃感 */
 
+    /* Waiting: 磨砂深灰 */
+    --s-wait-bg: rgba(30, 30, 35, 0.7);
+    --s-wait-color: #a0a0a0;
+    --s-wait-border: 1px solid rgba(255, 255, 255, 0.08);
+    --s-wait-shadow: 0 2px 4px rgba(0,0,0,0.2);
 
+    /* Loading: 铂金流光 */
+    --s-load-bg: #2b2b2b;
+    --s-load-color: #e0e0e0;
+    --s-load-border: 1px solid #555;
+
+    /* Ready: 祖母绿 (深邃暗调) */
+    --s-ready-bg: linear-gradient(145deg, #0f2e20 0%, #051b11 100%);
+    --s-ready-color: #4ade80; /* 荧光绿文字，形成反差 */
+    --s-ready-border: 1px solid #166534;
+    --s-ready-shadow: inset 0 1px 0 rgba(255,255,255,0.1);
+
+    /* Playing: 极夜黑金 */
+    /* 核心：使用很深的渐变 + 顶部高光(inset shadow)模拟宝石切面 */
+    --s-play-bg: linear-gradient(180deg, #3a3a3a 0%, #111111 100%);
+    --s-play-color: #fff;
+    --s-play-border: 1px solid rgba(255, 255, 255, 0.15);
+    --s-play-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.5),       /* 外部投影 */
+    inset 0 1px 0 rgba(255, 255, 255, 0.2); /* 顶部高光棱镜效果 */
+    --s-play-scale: scale(1.02);
+    --s-play-font-weight: 500;
+
+    /* 律动条：纯银色 */
+    --wave-bar-color: #666;
+    --wave-bar-playing: #e0e0e0;
+}
+
+/* --- 6. 赛博朋克 · 霓虹 (Cyberpunk) --- */
+
+body[data-bubble-style="cyberpunk"] {
+    --bubble-height: 24px;
+    --bubble-radius: 2px; /* 极简切角，几乎为直角 */
+    --bubble-padding: 0 12px;
+    --bubble-margin: 0 4px;
+    --bubble-font-family: "Courier New", "Consolas", monospace; /* 等宽代码字体 */
+    --bubble-backdrop: blur(4px);
+
+    /* Waiting: 矩阵灰 */
+    --s-wait-bg: rgba(10, 10, 16, 0.85);
+    --s-wait-color: #555;
+    --s-wait-border: 1px solid #333;
+    --s-wait-shadow: none;
+
+    /* Loading: 警告黄 (故障风) */
+    --s-load-bg: #1a1a00;
+    --s-load-color: #ffeb3b;
+    --s-load-border: 1px solid #ffeb3b;
+
+    /* Ready: 信号青 */
+    --s-ready-bg: #001a1a;
+    --s-ready-color: #00ffff;
+    --s-ready-border: 1px solid #00aaaa;
+    --s-ready-shadow: 0 0 5px rgba(0, 255, 255, 0.2);
+
+    /* Playing: 霓虹幻夜 (蓝紫渐变 + 强烈辉光) */
+    --s-play-bg: linear-gradient(90deg, #240b36 0%, #c31432 100%); /* 经典的 Midnight City 配色 */
+    /* 或者用更纯粹的黑色底 + 霓虹边框，这里选择渐变以体现"贵气" */
+    --s-play-bg: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
+    --s-play-color: #00ffff; /* 赛博青文字 */
+    --s-play-border: 1px solid rgba(0, 255, 255, 0.5); /* 青色边框 */
+
+    /* 核心：双重发光 (Box Shadow Glow) */
+    --s-play-shadow:
+    0 0 10px rgba(0, 255, 255, 0.3),  /* 青色光晕 */
+    inset 0 0 20px rgba(123, 31, 162, 0.2); /* 内部紫色氛围 */
+
+    --s-play-scale: scale(1.03);
+    --s-play-font-weight: 700;
+
+    /* 律动条：电光青 */
+    --wave-bar-color: #333;
+    --wave-bar-playing: #00ffff;
+}
+/* --- 7. 水墨 · 烟雨 (Ink & Mist) --- */
+/* 设计理念：仙侠飘渺、古风写意。
+   使用楷体/宋体，模拟宣纸的透气感与墨汁晕染的层级。
+   配色灵感：青花、水墨、丹砂。
+*/
+body[data-bubble-style="ink"] {
+    --bubble-height: 26px; /* 略高，留出呼吸感 */
+    --bubble-radius: 14px; /* 柔和圆润 */
+    --bubble-padding: 0 12px;
+    --bubble-margin: 0 4px;
+    /* 核心：优先使用楷体或宋体，营造古韵 */
+    --bubble-font-family: "Kaiti", "STKaiti", "KaiTi", "SimKai", "Songti SC", "Noto Serif SC", serif;
+    --bubble-backdrop: blur(6px); /* 烟雨朦胧感 */
+
+    /* Waiting: 宣纸白 */
+    --s-wait-bg: rgba(245, 245, 245, 0.85);
+    --s-wait-color: #595959; /* 淡墨色 */
+    --s-wait-border: 1px solid rgba(0, 0, 0, 0.1);
+    --s-wait-shadow: 0 2px 8px rgba(0,0,0,0.03);
+
+    /* Loading: 丹砂红 (点睛之笔) */
+    --s-load-bg: #fffbfb;
+    --s-load-color: #c0392b; /* 朱砂色 */
+    --s-load-border: 1px solid #e6b0aa;
+
+    /* Ready: 天青色 (雨过天青云破处) */
+    --s-ready-bg: rgba(224, 247, 250, 0.9);
+    --s-ready-color: #455a64;
+    --s-ready-border: 1px solid #b2ebf2;
+    --s-ready-shadow: 0 2px 6px rgba(69, 90, 100, 0.1);
+
+    /* Playing: 墨韵流淌 */
+    /* 渐变模拟墨汁在水中化开的深浅变化 */
+    --s-play-bg: linear-gradient(110deg, #2c3e50 0%, #4ca1af 100%);
+    /* 或者纯正水墨风：linear-gradient(180deg, #000000 0%, #434343 100%); */
+
+    --s-play-color: #fff;
+    --s-play-border: 1px solid rgba(255, 255, 255, 0.2);
+    /* 阴影带有青色辉光，体现"仙气" */
+    --s-play-shadow: 0 4px 15px rgba(76, 161, 175, 0.35);
+
+    --s-play-scale: scale(1.02);
+    --s-play-font-weight: 600;
+
+    /* 律动条：如烟似雾的白色 */
+    --wave-bar-color: #999;
+    --wave-bar-playing: rgba(255, 255, 255, 0.9);
+}
+/* --- 8. 羊皮卷 · 史诗 (Royal Scroll) --- */
+/* 适用场景：西幻、D&D、中世纪贵族、魔法学院
+   设计理念：泛黄的羊皮纸纹理，衬托深褐色的古文，边缘使用双线框模拟地图边界。
+*/
+body[data-bubble-style="scroll"] {
+    --bubble-height: 24px;
+    --bubble-radius: 4px; /* 略带圆角的方框 */
+    --bubble-padding: 0 10px;
+    --bubble-margin: 0 4px;
+    /* 衬线体，带来历史厚重感 */
+    --bubble-font-family: "Georgia", "Times New Roman", "Songti SC", serif;
+    --bubble-backdrop: none;
+
+    /* Waiting: 未展开的卷轴色 */
+    --s-wait-bg: #eaddcf;
+    --s-wait-color: #5d4037;
+    --s-wait-border: 1px solid #d7ccc8;
+    --s-wait-shadow: 0 1px 2px rgba(0,0,0,0.1);
+
+    /* Loading: 烛火黄 */
+    --s-load-bg: #fff8e1;
+    --s-load-color: #f57f17;
+    --s-load-border: 1px solid #ffca28;
+
+    /* Ready: 墨水蓝 (羽毛笔书写色) */
+    --s-ready-bg: #f5f5dc; /* 米色 */
+    --s-ready-color: #1a237e; /* 皇家蓝文字 */
+    --s-ready-border: 1px solid #9fa8da;
+    --s-ready-shadow: inset 0 0 10px rgba(161, 136, 127, 0.2); /* 纸张陈旧感 */
+
+    /* Playing: 荣耀金 (火漆与魔法) */
+    --s-play-bg: linear-gradient(180deg, #fff3e0 0%, #ffe0b2 100%);
+    --s-play-color: #3e2723; /* 深褐文字 */
+    /* 核心：双线边框，模拟古地图边框 */
+    --s-play-border: 3px double #8d6e63;
+    --s-play-shadow: 0 4px 8px rgba(62, 39, 35, 0.2);
+    --s-play-scale: scale(1.02);
+    --s-play-font-weight: 600;
+
+    /* 律动条：深褐墨水色 */
+    --wave-bar-color: #8d6e63;
+    --wave-bar-playing: #3e2723;
+}
+
+/* --- 9. 蒸汽 · 机械 (Steampunk) --- */
+/* 适用场景：维多利亚、工业革命、飞艇、机械师
+   设计理念：黄铜、紫铜、齿轮。强调金属光泽和硬朗的线条。
+*/
+body[data-bubble-style="steampunk"] {
+    --bubble-height: 24px;
+    --bubble-radius: 8px;
+    --bubble-padding: 0 12px;
+    --bubble-margin: 0 4px;
+    --bubble-font-family: "Courier New", "Rockwell", serif; /* 打字机风格 */
+    --bubble-backdrop: blur(2px);
+
+    /* Waiting: 锈蚀铜 */
+    --s-wait-bg: #d7ccc8;
+    --s-wait-color: #4e342e;
+    --s-wait-border: 1px solid #a1887f;
+
+    /* Loading: 蒸汽白 */
+    --s-load-bg: #eceff1;
+    --s-load-color: #607d8b;
+    --s-load-border: 1px dashed #78909c; /* 虚线模拟铆接 */
+
+    /* Ready: 抛光铜 */
+    --s-ready-bg: linear-gradient(145deg, #d7ccc8 0%, #efebe9 100%);
+    --s-ready-color: #5d4037;
+    --s-ready-border: 1px solid #8d6e63;
+    --s-ready-shadow: inset 1px 1px 0 rgba(255,255,255,0.5);
+
+    /* Playing: 熔炉之心 (黄铜金渐变) */
+    --s-play-bg: linear-gradient(180deg, #fff9c4 0%, #fbc02d 100%);
+    --s-play-color: #37474f; /* 铁灰色文字 */
+    --s-play-border: 1px solid #f57f17;
+    /* 金属浮雕感阴影 */
+    --s-play-shadow:
+    0 2px 5px rgba(0,0,0,0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8),
+    inset 0 -1px 0 rgba(166, 109, 5, 0.5);
+    --s-play-scale: scale(1.02);
+    --s-play-font-weight: 700;
+
+    /* 律动条：炉火红 */
+    --wave-bar-color: #5d4037;
+    --wave-bar-playing: #bf360c;
+}
 /* ==========================================================================
    PART 2: 核心组件逻辑 (Core Logic)
    ========================================================================== */
@@ -241,7 +463,7 @@ body[data-bubble-style="kawaii"] .voice-bubble.loading {
 .sovits-voice-bar {
     width: 3px;
     border-radius: 2px;
-    height: 4px;
+    height: 7px;
     background: var(--wave-bar-color);
     transition: background 0.3s, height 0.2s;
     opacity: 0.7;
@@ -258,7 +480,7 @@ body[data-bubble-style="kawaii"] .voice-bubble.loading {
 
 /* 关键帧 */
 @keyframes sovits-wave-anim {
-    0%, 100% { height: 4px; opacity: 0.6; }
+    0%, 100% { height: 7px; opacity: 0.6; }
     50% { height: 12px; opacity: 1; }
 }
 @keyframes tts-pulse {
@@ -459,3 +681,71 @@ body[data-bubble-style="kawaii"] .voice-bubble.loading {
     border-radius: 6px; font-size: 12px; cursor: pointer; transition: all 0.2s;
 }
 .btn-red:hover { background: rgba(239, 68, 68, 0.8); color: white; }
+
+/* --- 新增下拉菜单样式适配 --- */
+
+/* Obsidian (黑曜石) - 菜单样式 */
+.select-trigger[data-value="obsidian"] {
+    background: linear-gradient(180deg, #2c2c2c 0%, #000 100%);
+    color: #e0e0e0;
+    border-color: #444;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.1);
+}
+.option-item[data-value="obsidian"]:hover {
+    background: #000;
+    color: #fff;
+    border-left: 3px solid #fff;
+}
+
+/* Cyberpunk (赛博朋克) - 菜单样式 */
+.select-trigger[data-value="cyberpunk"] {
+    background: #050505;
+    color: #00ffff;
+    border: 1px solid #00aaaa;
+    font-family: "Consolas", monospace;
+    text-shadow: 0 0 2px rgba(0,255,255,0.5);
+}
+.option-item[data-value="cyberpunk"]:hover {
+    background: rgba(0, 255, 255, 0.1);
+    color: #00ffff;
+    border: 1px solid #00ffff;
+    box-shadow: 0 0 8px rgba(0, 255, 255, 0.4);
+}
+
+/* Ink (水墨) - 菜单样式 */
+.select-trigger[data-value="ink"] {
+    background: #fdfbf7; /* 米宣纸色 */
+    color: #2c3e50;
+    border: 1px solid #dcdcdc;
+    font-family: "Kaiti", serif; /* 菜单保持字体一致 */
+}
+.option-item[data-value="ink"]:hover {
+    background: linear-gradient(90deg, #e0e0e0 0%, #f5f5f5 100%);
+    color: #000;
+    /* 左侧朱砂红边框，模拟盖章 */
+    border-left: 4px solid #c0392b;
+    font-family: "Kaiti", serif;
+}
+/* Scroll (羊皮卷) - 菜单适配 */
+.select-trigger[data-value="scroll"] {
+    background: #fdf5e6; color: #5d4037;
+    border: 3px double #a1887f; /* 双线边框 */
+    font-family: "Georgia", serif;
+}
+.option-item[data-value="scroll"]:hover {
+    background: #fff3e0; color: #3e2723;
+    font-family: "Georgia", serif;
+}
+
+/* Steampunk (蒸汽朋克) - 菜单适配 */
+.select-trigger[data-value="steampunk"] {
+    background: linear-gradient(180deg, #d7ccc8 0%, #a1887f 100%);
+    color: #3e2723;
+    border: 1px solid #5d4037;
+    font-family: "Courier New", monospace;
+}
+.option-item[data-value="steampunk"]:hover {
+    background: linear-gradient(90deg, #ffecb3 0%, #ffca28 100%);
+    color: #000;
+    border-left: 3px solid #bf360c;
+}

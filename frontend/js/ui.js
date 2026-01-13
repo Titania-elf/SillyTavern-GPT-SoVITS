@@ -105,9 +105,14 @@ window.TTS_UI = window.TTS_UI || {};
                                 </div>
                                 <div class="select-options">
                                     <div class="option-item" data-value="default">🌿 森野·极简</div>
-                                    <div class="option-item" data-value="classic">📼 旧日·回溯</div>
+                                    <div class="option-item" data-value="cyberpunk">⚡ 赛博·霓虹</div>
+                                    <div class="option-item" data-value="ink">✒️ 水墨·烟雨</div>
                                     <div class="option-item" data-value="kawaii">💎 幻彩·琉璃</div>
                                     <div class="option-item" data-value="bloom">🌸 花信·初绽</div>
+                                    <div class="option-item" data-value="obsidian">🌑 极夜·黑曜</div>
+                                    <div class="option-item" data-value="scroll">📜 羊皮·史诗</div>
+                                    <div class="option-item" data-value="steampunk">⚙️ 蒸汽·机械</div>
+                                    <div class="option-item" data-value="classic">📼 旧日·回溯</div>
                                 </div>
                             </div>
                             <input type="hidden" id="style-selector" value="default">
