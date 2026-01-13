@@ -33,9 +33,18 @@
 .sovits-voice-duration { font-size: 12px; font-weight: 600; line-height: 1; color: #666; }
 
 /* === 状态 A: 未生成 (Waiting) - 灰色条 === */
-.voice-bubble[data-status="waiting"] { background: #f3f4f6; border-color: #e5e7eb; color: #888; }
-.voice-bubble[data-status="waiting"] .sovits-voice-bar { background: #bdbdbd; height: 4px; }
-.voice-bubble[data-status="waiting"]:hover { background: #e0e0e0; }
+.voice-bubble[data-status="waiting"] {
+    background: #eeeeee;           /* 背景改为标准灰 */
+    border-color: #bdbdbd;         /* 边框加深 */
+    color: #616161;                /* 文字深灰 */
+}
+.voice-bubble[data-status="waiting"] .sovits-voice-bar {
+    background: #757575;           /* 音频条改为深灰色 */
+    height: 4px;
+}
+.voice-bubble[data-status="waiting"]:hover {
+    background: #e0e0e0;           /* 悬停时更深的灰 */
+}
 
 /* === 状态 B: 加载中 (Loading) - 呼吸灯 === */
 .voice-bubble.loading {
@@ -59,15 +68,18 @@
     transform: translateY(-1px); background: #c8e6c9 !important;
 }
 
-/* === 状态 D: 播放中 (Playing) - 粉色律动条 === */
+/* === 状态 D: 播放中 (Playing) - 深绿律动条 === */
 .voice-bubble.playing {
-    background: #fff0f5 !important; border-color: #ff80ab !important;
-    color: #c2185b !important;
-    box-shadow: 0 0 12px rgba(255, 64, 129, 0.4) !important;
-    transform: scale(1.05); cursor: default;
+    background: #c8e6c9 !important;      /* 背景：比生成完毕稍深的淡绿 */
+    border-color: #43a047 !important;    /* 边框：鲜艳的绿色 */
+    color: #1b5e20 !important;           /* 文字：墨绿色 */
+    box-shadow: 0 0 12px rgba(76, 175, 80, 0.6) !important; /* 阴影：绿色光晕 */
+    transform: scale(1.05);
+    cursor: default;
 }
+
 .voice-bubble.playing .sovits-voice-bar {
-    background: #e91e63;
+    background: #2e7d32;                 /* 律动条：深绿色 */
     animation: sovits-wave-anim 1s infinite ease-in-out;
 }
 .voice-bubble.playing .sovits-voice-bar:nth-child(1) { animation-delay: 0.0s; }

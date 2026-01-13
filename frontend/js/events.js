@@ -78,6 +78,7 @@
 
                     // 获取 key (如果没有 data-key，尝试用 Scheduler 生成一个，兼容旧版)
                     const key = $btn.data('key') || Scheduler.getTaskKey(charName, $btn.data('text'));
+                    $btn.attr('data-key', key);
                     this.playAudio(key, audioUrl);
                 }
                 // 状态 B: 未生成或失败，尝试生成
@@ -149,6 +150,7 @@
 
                 // 4. 执行调度
                 if ($realBtn && $realBtn.length) {
+                    $realBtn.attr('data-key', key);
                     $realBtn.removeClass('error').attr('data-status', 'waiting');
                     Scheduler.addToQueue($realBtn);
                     Scheduler.run();
