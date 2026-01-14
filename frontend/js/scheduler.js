@@ -152,26 +152,9 @@
             CACHE.audioMemory[key] = audioUrl;
             CACHE.pendingTasks.delete(key);
 
-            const applyUpdate = ($el) => {
-                let elKey = $el.attr('data-key');
-                if (!elKey) elKey = this.getTaskKey($el.data('voice-name'), $el.data('text'));
-
-                if (elKey === key && $el.attr('data-status') !== 'ready') {
-                    $el.attr('data-audio-url', audioUrl);
-                    this.updateStatus($el, 'ready');
-                    if ($el.data('auto-play-after-gen')) {
-                        $el.click();
-                        $el.removeData('auto-play-after-gen');
-                    }
-                }
-            };
-
-            $('.voice-bubble').each((_, el) => applyUpdate($(el)));
-            $('iframe').each(function() {
-                try {
-                    $(this).contents().find('.voice-bubble').each((_, el) => applyUpdate($(el)));
-                } catch(e) {}
-            });
+            if (window.TTS_Parser && window.TTS_Parser.updateState) {
+                window.TTS_Parser.updateState();
+            }
         },
 
         async checkCache(task, modelConfig) {
