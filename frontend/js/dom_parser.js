@@ -8,15 +8,49 @@
     let scanTimer = null;
 
     window.TTS_Parser = {
+        htmlCache: {},
         init() {
-            console.log("✅ [Parser] DOM 解析器已加载 (修复版)");
+            console.log("✅ [Parser] DOM 解析器已加载 (Observer 版)");
+            // 启动观察者，一旦 DOM 变化立即触发扫描
+            this.startObserver();
+        },
+
+        // 【新增】观察者启动函数
+        startObserver() {
+            if (this.observer) return;
+
+            // 创建观察者
+            this.observer = new MutationObserver((mutations) => {
+                // 性能优化：检查变动是否发生在消息区域
+                // 如果变动的是我们自己的气泡，或者无关元素，直接忽略
+                let shouldScan = false;
+                for (let mutation of mutations) {
+                    // 如果是脚本修改了文本，或者插入了节点
+                    if (mutation.type === 'childList' || mutation.type === 'characterData') {
+                        // 简单粗暴：只要 DOM 动了，就执行扫描
+                        // 由于我们之前加了 HTML 缓存 (htmlCache)，这里执行几百次也不会卡
+                        shouldScan = true;
+                        break;
+                    }
+                }
+
+                if (shouldScan) {
+                    this._executeScan();
+                }
+            });
+
+            // 监听 body 的变化（包括子树）
+            this.observer.observe(document.body, {
+                childList: true,
+                subtree: true,
+                characterData: true // 监听文字内容变化
+            });
         },
 
         scan() {
-            if (scanTimer) clearTimeout(scanTimer);
-            scanTimer = setTimeout(() => {
-                this._executeScan();
-            }, 300); // 稍微缩短防抖时间，提高响应速度
+            // 定时器已废弃，现在由 MutationObserver 接管
+            // 依然保留这个接口，供外部强制刷新使用
+            this._executeScan();
         },
 
         _executeScan() {
@@ -89,41 +123,62 @@
                             // 改为直接检测是否匹配正则
                             if (REGEX.test(html)) {
                                 REGEX.lastIndex = 0; // 重置正则游标
-                                const newHtml = html.replace(REGEX, (match, spaceChars, name, emotion, text) => {
-                                    // 容错处理：如果 text 没抓到（比如被切断），使用空字符串
-                                    if (!text) return match;
+                                const newHtml = html.replace(PARSE_REGEX, (match, name, emotion, text) => {
+                                    if (!text || !text.trim()) return match;
 
                                     const cleanName = name.trim();
-                                    const cleanText = text.replace(/<[^>]+>|&lt;[^&]+&gt;/g, '').trim();
-                                    if(!cleanText) return match; // 空文本不转
+                                    // const cleanEmotion = emotion.trim(); // 暂时不用，减少计算
+                                    const cleanText = text.trim();
 
+                                    // 1. 获取唯一 Hash (Key)
                                     const key = Scheduler.getTaskKey(cleanName, cleanText);
-                                    let status = 'waiting';
+
+                                    // 2. 【核心防闪烁】如果之前已经算好了这个气泡的 HTML，直接返回！
+                                    // 只有当状态发生改变（比如从 loading 变成 ready）时，才需要重新生成
+                                    const memoryState = CACHE.audioMemory[key] ? 'ready' : 'queued';
+                                    if (this.htmlCache[key] && this.htmlCache[key].state === memoryState) {
+                                        return this.htmlCache[key].html;
+                                    }
+
+                                    // 3. 如果没缓存，或者状态变了，才执行下面的生成逻辑
+                                    const cleanEmotion = emotion.trim();
+                                    let status = 'queued';
                                     let dataUrlAttr = '';
-                                    let loadingClass = '';
+                                    let loadingClass = 'loading';
 
                                     if (CACHE.audioMemory[key]) {
                                         status = 'ready';
+                                        loadingClass = ''; // 已生成，不转圈
                                         dataUrlAttr = `data-audio-url='${CACHE.audioMemory[key]}'`;
                                     } else if (CACHE.pendingTasks.has(key)) {
                                         status = 'queued';
-                                        loadingClass = 'loading';
+                                        // loadingClass = 'loading'; // 正在生成中，保持转圈
+                                    } else {
+                                        // 【新增】不仅没生成，也没在队列里（新出现的流式文本）
+                                        // 立即告诉 Scheduler 去生成，不要等下一轮扫描
+                                        // 这样实现了“跳过生成”的感觉：文本一出来，后台就开始请求了
+                                        Scheduler.addTask(cleanName, cleanEmotion, cleanText);
                                     }
 
                                     const d = Math.max(1, Math.ceil(cleanText.length * 0.25));
                                     const bubbleWidth = Math.min(220, 60 + d * 10);
 
-                                    // 确保 spaceChars 存在
-                                    const prefix = spaceChars || '';
+                                    const bubbleHtml = `<span class='voice-bubble ${loadingClass}'
+                                style='width: ${bubbleWidth}px; display:inline-flex;'
+                                data-key='${key}'
+                                data-status='${status}' ${dataUrlAttr} data-text='${cleanText}'
+                                data-voice-name='${cleanName}' data-voice-emotion='${cleanEmotion}'>
+                                ${BARS_HTML}
+                                <span class='sovits-voice-duration'>${d}"</span>
+                            </span>`;
 
-                                    return `${prefix}<span class='voice-bubble ${loadingClass}'
-                                    style='width: ${bubbleWidth}px;'
-                                    data-key='${key}'
-                                    data-status='${status}' ${dataUrlAttr} data-text='${cleanText}'
-                                    data-voice-name='${cleanName}' data-voice-emotion='${emotion.trim()}'>
-                                    ${BARS_HTML}
-                                    <span class='sovits-voice-duration'>${d}"</span>
-                                </span>`;
+                                    // 4. 【写入缓存】存起来，下次流传输刷新时直接用
+                                    this.htmlCache[key] = {
+                                        state: status,
+                                        html: bubbleHtml
+                                    };
+
+                                    return bubbleHtml;
                                 });
 
                                 // 只有当 HTML 确实改变时才更新，避免光标跳动或重绘
@@ -148,7 +203,7 @@
                 // 扩大搜索范围，防止 .mes_text 类名不匹配
                 $('.mes_text, .message-body, .markdown-content').each(function() {
                     const $this = $(this);
-                    if ($this.find('iframe').length > 0) return;
+                    // if ($this.find('iframe').length > 0) return;
 
                     // 【修复】移除了 data-voice-processed 和 find('.voice-bubble') 的阻断性检查
                     // 只要正则能匹配到新的标签，就允许替换
