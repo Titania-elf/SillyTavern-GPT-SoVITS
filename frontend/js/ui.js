@@ -35,6 +35,8 @@ window.TTS_UI = window.TTS_UI || {};
         const settings = CTX.CACHE.settings || {};
         const currentBase = settings.base_dir || "";
         const currentCache = settings.cache_dir || "";
+        // ---【新增】获取当前语言设置，默认为 default ---
+        const currentLang = settings.default_lang || "default";
         const isEnabled = settings.enabled !== false;
 
         const savedConfig = localStorage.getItem('tts_plugin_remote_config');
@@ -45,78 +47,35 @@ window.TTS_UI = window.TTS_UI || {};
         // 3. 构建 HTML 结构
         const html = `
     <div id="tts-dashboard-overlay" class="tts-overlay">
-
         <style>
-            /* --- 最终修复样式 START --- */
+            /* 保持之前的终极修复样式，防止手机端显示不全 */
             #tts-dashboard-overlay {
-                position: fixed;
-                top: 0; left: 0; width: 100%; height: 100%;
-                z-index: 99999; /* 极大值，确保在所有酒馆界面之上 */
-                background: rgba(0,0,0,0.7);
-                backdrop-filter: blur(3px);
-
-                /* 布局：水平居中，垂直靠上 */
-                display: flex;
-                justify-content: center;
-                align-items: flex-start;
-
-                padding-top: 60px; /* 避开顶部状态栏和酒馆菜单 */
-                padding-left: 10px;
-                padding-right: 10px;
-                box-sizing: border-box;
+                position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+                z-index: 99999; background: rgba(0,0,0,0.7); backdrop-filter: blur(3px);
+                display: flex; justify-content: center; align-items: flex-start;
+                padding-top: 60px; padding-left: 10px; padding-right: 10px; box-sizing: border-box;
             }
-
             #tts-dashboard.tts-panel {
-                width: 100% !important;
-                max-width: 500px !important;
-
-                /* 【关键修改 1】: 移除 Flex，回归最简单的 Block 布局，防止塌陷 */
-                display: block !important;
-                position: relative !important;
-
+                width: 100% !important; max-width: 500px !important;
+                display: block !important; position: relative !important;
                 background: var(--SmartThemeBodyColor, #1f2937);
                 border: 1px solid var(--SmartThemeBorderColor, #4b5563);
-                border-radius: 12px;
-                box-shadow: 0 10px 30px rgba(0,0,0,0.8);
-                color: var(--SmartThemeBodyText, #e5e7eb); /* 强制字体颜色，防止隐形 */
-                margin: 0 !important;
+                border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+                color: var(--SmartThemeBodyText, #e5e7eb); margin: 0 !important;
             }
-
-            /* 头部 */
             #tts-dashboard .tts-header {
-                height: 50px; /* 固定高度 */
-                padding: 0 15px;
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                border-bottom: 1px solid rgba(255,255,255,0.1);
-                background: rgba(0,0,0,0.2);
-                border-radius: 12px 12px 0 0;
+                height: 50px; padding: 0 15px; display: flex; justify-content: space-between;
+                align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1);
+                background: rgba(0,0,0,0.2); border-radius: 12px 12px 0 0;
             }
-
-            /* 内容区域 */
             #tts-dashboard .tts-content {
-                /* 【关键修改 2】: 直接给内容区定死最大高度 */
-                /* 75vh 意味着内容区最多占屏幕高度的 75%，超出会出滚动条 */
-                max-height: 75vh !important;
-
-                overflow-y: auto !important; /* 强制开启滚动 */
-                overflow-x: hidden;
-                padding: 15px;
-                display: block !important; /* 防止被父级样式影响 */
-                -webkit-overflow-scrolling: touch; /* iOS 滚动优化 */
+                max-height: 75vh !important; overflow-y: auto !important; overflow-x: hidden;
+                padding: 15px; display: block !important; -webkit-overflow-scrolling: touch;
             }
-
-            /* 输入框在手机上的优化 */
-            .tts-modern-input {
-                max-width: 100%;
-                box-sizing: border-box;
-            }
-            /* --- 最终修复样式 END --- */
+            .tts-modern-input { max-width: 100%; box-sizing: border-box; }
         </style>
 
         <div id="tts-dashboard" class="tts-panel">
-
             <div class="tts-header">
                 <h3 style="margin:0; font-size:16px; font-weight:bold;">🎧 语音配置中心</h3>
                 <button class="tts-close" onclick="$('#tts-dashboard-overlay').remove()"
@@ -124,7 +83,6 @@ window.TTS_UI = window.TTS_UI || {};
             </div>
 
             <div class="tts-content">
-
                 <div class="tts-card">
                     <div class="tts-card-title">🔌 系统状态</div>
                     <label class="tts-switch-row">
@@ -158,56 +116,41 @@ window.TTS_UI = window.TTS_UI || {};
                         <span class="tts-switch-label">Iframe 模式</span>
                         <input type="checkbox" id="tts-iframe-switch" class="tts-toggle" ${settings.iframe_mode ? 'checked' : ''}>
                     </label>
-                    <div class="tts-input-row">
-                        <span class="tts-input-label">气泡风格</span>
-                        <div class="tts-custom-select" id="style-dropdown" style="margin-top:5px;">
-                            <div class="select-trigger" data-value="default">
-                                <span>🌿 森野·极简</span>
-                                <i class="arrow-icon">▼</i>
-                            </div>
-                            <div class="select-options">
-                                <div class="option-item" data-value="default">🌿 森野·极简</div>
-                                <div class="option-item" data-value="cyberpunk">⚡ 赛博·霓虹</div>
-                                <div class="option-item" data-value="ink">✒️ 水墨·烟雨</div>
-                                <div class="option-item" data-value="kawaii">💎 幻彩·琉璃</div>
-                                <div class="option-item" data-value="bloom">🌸 花信·初绽</div>
-                                <div class="option-item" data-value="rouge">💋 魅影·微醺</div>
-                                <div class="option-item" data-value="holo">🛸 星舰·光环</div>
-                                <div class="option-item" data-value="scroll">📜 羊皮·史诗</div>
-                                <div class="option-item" data-value="steampunk">⚙️ 蒸汽·机械</div>
-                                <div class="option-item" data-value="classic">📼 旧日·回溯</div>
-                            </div>
-                        </div>
-                        <input type="hidden" id="style-selector" value="default">
+                    <div class="tts-input-row" style="display:none;"> <input type="hidden" id="style-selector" value="default">
                     </div>
                 </div>
 
                 <div class="tts-card">
-                    <div class="tts-card-title">📂 路径配置</div>
+                    <div class="tts-card-title">📂 路径与语言配置</div>
+
                     <div class="tts-input-row">
+                        <span class="tts-input-label">🗣️ 参考音频语言 (文件夹)</span>
+                        <select id="tts-lang-select" class="tts-modern-input">
+                            <option value="default" ${currentLang === 'default' ? 'selected' : ''}>Default (根目录)</option>
+                            <option value="Chinese" ${currentLang === 'Chinese' ? 'selected' : ''}>Chinese (中文)</option>
+                            <option value="Japanese" ${currentLang === 'Japanese' ? 'selected' : ''}>Japanese (日语)</option>
+                            <option value="English" ${currentLang === 'English' ? 'selected' : ''}>English (英语)</option>
+                        </select>
+                        <div style="font-size:11px; color:#888; margin-top:4px;">对应 reference_audios 下的子文件夹名</div>
+                    </div>
+                    <div class="tts-input-row" style="margin-top:10px;">
                         <span class="tts-input-label">模型路径</span>
                         <input type="text" id="tts-base-path" class="tts-modern-input" value="${currentBase}" placeholder="绝对路径">
                     </div>
+
                     <div class="tts-input-row">
                         <span class="tts-input-label">输出路径</span>
                         <input type="text" id="tts-cache-path" class="tts-modern-input" value="${currentCache}" placeholder="绝对路径">
                     </div>
-                    <div style="text-align:right; margin-top:12px;">
-                        <button id="tts-btn-save-paths" class="btn-primary">保存</button>
-                    </div>
-                </div>
 
-                <div class="tts-card">
-                    <div class="tts-card-title">📂 模型管理</div>
-                    <div style="display:flex; gap:8px;">
-                        <input type="text" id="tts-create-folder-name" class="tts-modern-input" placeholder="模型名">
-                        <button id="tts-btn-create-folder" class="btn-primary">新建</button>
+                    <div style="text-align:right; margin-top:12px;">
+                        <button id="tts-btn-save-paths" class="btn-primary">保存配置</button>
                     </div>
                 </div>
 
                 <div class="tts-card">
                     <div class="tts-card-title">🔗 角色绑定</div>
-                    <div style="display:flex; gap:8px; margin-bottom:12px;">
+                     <div style="display:flex; gap:8px; margin-bottom:12px;">
                         <input type="text" id="tts-new-char" class="tts-modern-input" placeholder="角色名">
                         <select id="tts-new-model" class="tts-modern-input" style="flex:1.5"><option>...</option></select>
                     </div>
@@ -225,6 +168,8 @@ window.TTS_UI = window.TTS_UI || {};
         $('body').append(html);
         scope.renderDashboardList();
         scope.renderModelOptions();
+
+        // 重新绑定事件（这一步很重要，因为按钮都是新生成的）
         scope.bindEvents();
     };
 
