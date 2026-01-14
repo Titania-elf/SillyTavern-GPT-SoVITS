@@ -35,7 +35,6 @@ window.TTS_UI = window.TTS_UI || {};
         const settings = CTX.CACHE.settings || {};
         const currentBase = settings.base_dir || "";
         const currentCache = settings.cache_dir || "";
-        // ---【新增】获取当前语言设置，默认为 default ---
         const currentLang = settings.default_lang || "default";
         const isEnabled = settings.enabled !== false;
 
@@ -45,35 +44,9 @@ window.TTS_UI = window.TTS_UI || {};
         const remoteIP = config.ip;
 
         // 3. 构建 HTML 结构
+        // 注意：这里删除了 <style> 标签，完全依赖你的外部 CSS 文件
         const html = `
     <div id="tts-dashboard-overlay" class="tts-overlay">
-        <style>
-            /* 保持之前的终极修复样式，防止手机端显示不全 */
-            #tts-dashboard-overlay {
-                position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-                z-index: 99999; background: rgba(0,0,0,0.7); backdrop-filter: blur(3px);
-                display: flex; justify-content: center; align-items: flex-start;
-                padding-top: 60px; padding-left: 10px; padding-right: 10px; box-sizing: border-box;
-            }
-            #tts-dashboard.tts-panel {
-                width: 100% !important; max-width: 500px !important;
-                display: block !important; position: relative !important;
-                background: var(--SmartThemeBodyColor, #1f2937);
-                border: 1px solid var(--SmartThemeBorderColor, #4b5563);
-                border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.8);
-                color: var(--SmartThemeBodyText, #e5e7eb); margin: 0 !important;
-            }
-            #tts-dashboard .tts-header {
-                height: 50px; padding: 0 15px; display: flex; justify-content: space-between;
-                align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1);
-                background: rgba(0,0,0,0.2); border-radius: 12px 12px 0 0;
-            }
-            #tts-dashboard .tts-content {
-                max-height: 75vh !important; overflow-y: auto !important; overflow-x: hidden;
-                padding: 15px; display: block !important; -webkit-overflow-scrolling: touch;
-            }
-            .tts-modern-input { max-width: 100%; box-sizing: border-box; }
-        </style>
 
         <div id="tts-dashboard" class="tts-panel">
             <div class="tts-header">
@@ -116,7 +89,28 @@ window.TTS_UI = window.TTS_UI || {};
                         <span class="tts-switch-label">Iframe 模式</span>
                         <input type="checkbox" id="tts-iframe-switch" class="tts-toggle" ${settings.iframe_mode ? 'checked' : ''}>
                     </label>
-                    <div class="tts-input-row" style="display:none;"> <input type="hidden" id="style-selector" value="default">
+
+                    <div class="tts-input-row">
+                        <span class="tts-input-label">气泡风格</span>
+                        <div class="tts-custom-select" id="style-dropdown" style="margin-top:5px;">
+                            <div class="select-trigger" data-value="default">
+                                <span>🌿 森野·极简</span>
+                                <i class="arrow-icon">▼</i>
+                            </div>
+                            <div class="select-options">
+                                <div class="option-item" data-value="default">🌿 森野·极简</div>
+                                <div class="option-item" data-value="cyberpunk">⚡ 赛博·霓虹</div>
+                                <div class="option-item" data-value="ink">✒️ 水墨·烟雨</div>
+                                <div class="option-item" data-value="kawaii">💎 幻彩·琉璃</div>
+                                <div class="option-item" data-value="bloom">🌸 花信·初绽</div>
+                                <div class="option-item" data-value="rouge">💋 魅影·微醺</div>
+                                <div class="option-item" data-value="holo">🛸 星舰·光环</div>
+                                <div class="option-item" data-value="scroll">📜 羊皮·史诗</div>
+                                <div class="option-item" data-value="steampunk">⚙️ 蒸汽·机械</div>
+                                <div class="option-item" data-value="classic">📼 旧日·回溯</div>
+                            </div>
+                        </div>
+                        <input type="hidden" id="style-selector" value="default">
                     </div>
                 </div>
 
@@ -169,7 +163,7 @@ window.TTS_UI = window.TTS_UI || {};
         scope.renderDashboardList();
         scope.renderModelOptions();
 
-        // 重新绑定事件（这一步很重要，因为按钮都是新生成的）
+        // 重新绑定事件
         scope.bindEvents();
     };
 
@@ -299,6 +293,50 @@ window.TTS_UI = window.TTS_UI || {};
             }
         });
     };
+    // ===========================================
+    // ✅ 【恢复】下拉菜单交互逻辑
+    // ===========================================
+    // 1. 点击展开/收起
+    $('#style-dropdown .select-trigger').off('click').on('click', function(e) {
+        e.stopPropagation(); // 防止冒泡
+        $(this).parent().toggleClass('open');
+    });
+
+    // 2. 点击选项
+    $('.option-item').off('click').on('click', async function(e) {
+        e.stopPropagation();
+        const val = $(this).attr('data-value');
+        const txt = $(this).text();
+        const $container = $(this).closest('.tts-custom-select');
+
+        // 更新 UI 显示
+        $container.find('.select-trigger span').text(txt);
+        $container.find('.select-trigger').attr('data-value', val);
+        $('#style-selector').val(val);
+
+        // 关闭菜单
+        $container.removeClass('open');
+
+        // 保存设置
+        try {
+            // 如果你有 API 更新设置的方法：
+            if(window.TTS_API && window.TTS_API.updateSettings) {
+                await window.TTS_API.updateSettings({ bubble_style: val });
+            }
+            // 更新本地缓存
+            if(CTX.CACHE && CTX.CACHE.settings) {
+                CTX.CACHE.settings.bubble_style = val;
+            }
+            console.log("样式已切换为:", val);
+        } catch(err) {
+            console.error("样式保存失败", err);
+        }
+    });
+
+    // 3. 点击外部关闭菜单
+    $(document).off('click.closeDropdown').on('click.closeDropdown', function() {
+        $('.tts-custom-select').removeClass('open');
+    });
 
     scope.renderModelOptions = function() {
         const $select = $('#tts-new-model');
