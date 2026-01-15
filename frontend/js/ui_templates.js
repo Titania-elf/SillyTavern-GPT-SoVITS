@@ -29,7 +29,7 @@ window.TTS_UI.Templates = (function() {
                             <input type="checkbox" id="tts-master-switch" class="tts-toggle" ${isEnabled ? 'checked' : ''}>
                         </label>
                         <label class="tts-switch-row">
-                            <span class="tts-switch-label">预加载模式(收到消息生成,建议开启)</span>
+                            <span class="tts-switch-label">预加载模式(自动生成,建议开启)</span>
                             <input type="checkbox" id="tts-toggle-auto" class="tts-toggle" ${settings.auto_generate ? 'checked' : ''}>
                         </label>
                     </div>
