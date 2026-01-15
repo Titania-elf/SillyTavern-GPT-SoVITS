@@ -381,19 +381,21 @@
             await loadModule('state');
 
             // 2. 核心组件
-            await loadModule('dom_parser'); // 【修复点】之前写错了名字
+            await loadModule('dom_parser');
             await loadModule('scheduler');
             await loadModule('events');
 
-            // 3. 界面
-            await loadModule('ui');
+            console.log("🎨 [Loader] 加载UI分层模块...");
+            // await loadModule('ui');
+            await loadModule('ui_templates');
+            await loadModule('ui_dashboard');
+            await loadModule('ui_main');
 
             console.log("✅ [Loader] 所有模块加载完毕，启动插件");
             initPlugin();
 
         } catch (error) {
             console.error("❌ TTS插件启动失败:", error);
-            // 【核心修改】启动失败时，弹出手动配置 IP 的框
             showEmergencyConfig(MANAGER_API);
         }
     }
