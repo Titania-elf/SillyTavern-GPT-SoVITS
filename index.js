@@ -320,7 +320,7 @@
                 font-family: sans-serif; font-size: 14px; border: 1px solid #ff7675;
                 max-width: 250px;
             ">
-                <div style="font-weight:bold; color:#ff7675; margin-bottom:8px;">⚠️ 无法连接 TTS 后端</div>
+                <div style="font-weight:bold; color:#ff7675; margin-bottom:8px;">⚠️ 无法连接插件后端，请检查是否开启插件后端</div>
                 <div style="font-size:12px; color:#aaa; margin-bottom:8px;">尝试连接: ${currentApi} 失败。<br>请手动输入电脑 IP：</div>
 
                 <input type="text" id="tts-emergency-ip" placeholder="例如: 192.168.1.5"

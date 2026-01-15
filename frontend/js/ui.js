@@ -71,7 +71,7 @@ window.TTS_UI = window.TTS_UI || {};
                 <div class="tts-card">
                     <div class="tts-card-title">📡 连接模式</div>
                     <label class="tts-switch-row">
-                        <span class="tts-switch-label">远程模式 (手机用)</span>
+                        <span class="tts-switch-label">远程模式 (局域网部署用)</span>
                         <input type="checkbox" id="tts-remote-switch" class="tts-toggle" ${isRemote ? 'checked' : ''}>
                     </label>
                     <div id="tts-remote-input-area" style="display:${isRemote ? 'block' : 'none'}; margin-top:10px; padding-top:10px; border-top:1px dashed #444;">
@@ -86,7 +86,7 @@ window.TTS_UI = window.TTS_UI || {};
                 <div class="tts-card">
                     <div class="tts-card-title">🎨 视觉体验</div>
                     <label class="tts-switch-row">
-                        <span class="tts-switch-label">Iframe 模式</span>
+                        <span class="tts-switch-label">美化卡专用模式</span>
                         <input type="checkbox" id="tts-iframe-switch" class="tts-toggle" ${settings.iframe_mode ? 'checked' : ''}>
                     </label>
 
@@ -145,9 +145,13 @@ window.TTS_UI = window.TTS_UI || {};
                 <div class="tts-card">
                     <div class="tts-card-title">🔗 角色绑定</div>
                      <div style="display:flex; gap:8px; margin-bottom:12px;">
-                        <input type="text" id="tts-new-char" class="tts-modern-input" placeholder="角色名">
-                        <select id="tts-new-model" class="tts-modern-input" style="flex:1.5"><option>...</option></select>
+                        <input type="text" id="tts-new-char" class="tts-modern-input" style="flex: 1; min-width: 0;" placeholder="角色名">
+
+                        <select id="tts-new-model" class="tts-modern-input" style="flex: 2; min-width: 0;">
+                            <option>...</option>
+                        </select>
                     </div>
+
                     <button id="tts-btn-bind-new" class="btn-primary" style="width:100%">➕ 绑定</button>
                     <div class="tts-list-zone" style="margin-top:15px;">
                         <div id="tts-mapping-list" class="tts-list-container" style="border:none; background:transparent;"></div>
