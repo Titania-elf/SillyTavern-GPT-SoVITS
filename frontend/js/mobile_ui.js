@@ -192,7 +192,11 @@ window.TTS_Mobile = window.TTS_Mobile || {};
                         $content.find('.fav-play-btn').off().click(function(e) {
                             e.stopPropagation();
                             const $item = $(this).closest('.fav-item');
-                            const url = $item.data('url');
+                            let url = $item.data('url');
+                            if (url && url.startsWith('/') && window.TTS_API && window.TTS_API.baseUrl) {
+                                url = window.TTS_API.baseUrl + url;
+                            }
+                            console.log("▶️ 尝试播放收藏:", url);
                             if (window.TTS_Events && window.TTS_Events.playAudio) {
                                 window.TTS_Events.playAudio("fav_play_" + Date.now(), url);
                             } else {

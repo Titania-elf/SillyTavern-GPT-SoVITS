@@ -21,7 +21,7 @@ if os.path.exists(FRONTEND_DIR):
 else:
     print(f"Warning: 'frontend' folder not found at {FRONTEND_DIR}")
 
-os.makedirs("data/favorites_audio", exist_ok=True) # 确保文件夹存在
+os.makedirs("data/favorites_audio", exist_ok=True)
 app.mount("/favorites", StaticFiles(directory="data/favorites_audio"), name="favorites")
 # 3. 注册路由
 app.include_router(data.router, tags=["Data Management"])
