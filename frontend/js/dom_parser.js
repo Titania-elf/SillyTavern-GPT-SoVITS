@@ -206,8 +206,6 @@
                             const d = Math.max(1, Math.ceil(cleanText.length * 0.25));
                             const bubbleWidth = Math.min(220, 60 + d * 10);
                             const prefix = spaceChars || '';
-
-                            // 【关键修复】这里加了 data-key="${key}"
                             return `${prefix}<span class="voice-bubble ${loadingClass}"
                             style="width: ${bubbleWidth}px"
                             data-status="${status}" data-key="${key}" ${dataUrlAttr} data-text="${cleanText}"

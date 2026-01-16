@@ -138,33 +138,56 @@ window.TTS_Mobile = window.TTS_Mobile || {};
                     });
                     if (res.status !== 'success') throw new Error(res.msg);
                     const data = res.data;
-                    // 4. 渲染函数
+
                     const renderList = (list, emptyMsg) => {
                         if (!list || list.length === 0) {
                             return `<div style="padding:40px 20px; text-align:center; color:#888; font-size:14px;">${emptyMsg}</div>`;
                         }
+                        const BARS_HTML = `<span class='sovits-voice-waves'><span class='sovits-voice-bar'></span><span class='sovits-voice-bar'></span><span class='sovits-voice-bar'></span></span>`;
 
                         return list.map(item => {
                             let contextHtml = '';
                             if(item.context && item.context.length) {
                                 contextHtml = `<div style="font-size:12px; color:#666; background:rgba(0,0,0,0.05); padding:6px; border-radius:4px; margin-bottom:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
-                                    📝 ${item.context[item.context.length-1]}
-                                </div>`;
+                📝 ${item.context[item.context.length-1]}
+            </div>`;
                             }
                             const dateStr = item.created_at ? item.created_at.split(' ')[0] : '';
                             const borderStyle = item.is_current ? 'border-left: 4px solid #e11d48;' : '';
 
+                            let fullUrl = item.audio_url;
+                            if (fullUrl && fullUrl.startsWith('/') && window.TTS_API && window.TTS_API.baseUrl) {
+                                fullUrl = window.TTS_API.baseUrl + fullUrl;
+                            }
+                            const cleanText = item.text || "";
+                            const d = Math.max(1, Math.ceil(cleanText.length * 0.25));
+                            const bubbleWidth = Math.min(220, 60 + d * 10);
+
                             return `
-                                <div class="fav-item" data-id="${item.id}" data-url="${item.audio_url}" style="background:#fff; border-radius:12px; padding:12px; margin-bottom:12px; box-shadow:0 1px 3px rgba(0,0,0,0.05); ${borderStyle}">
+                                <div class="fav-item" data-id="${item.id}"
+                                     style="background:#fff; border-radius:12px; padding:12px; margin-bottom:12px; box-shadow:0 1px 3px rgba(0,0,0,0.05); ${borderStyle}">
+
                                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
                                         <strong style="color:#e11d48; font-size:14px;">${item.char_name || '未知角色'}</strong>
                                         <span style="font-size:11px; color:#999;">${dateStr}</span>
                                     </div>
                                     ${contextHtml}
                                     <div style="font-size:14px; color:#333; margin-bottom:10px; line-height:1.4;">“${item.text}”</div>
-                                    <div style="display:flex; gap:10px;">
-                                        <button class="fav-play-btn" style="flex:1; background:#f3f4f6; border:none; padding:8px; border-radius:8px; font-weight:600; color:#374151;">▶ 播放</button>
-                                        <button class="fav-del-btn" style="width:40px; background:#fee2e2; border:none; color:#dc2626; border-radius:8px; display:flex; align-items:center; justify-content:center;">🗑️</button>
+
+                                    <div style="display:flex; align-items:center; justify-content:space-between; margin-top:10px;">
+
+                                        <div class="voice-bubble ready fav-play-bubble"
+                                             data-url="${fullUrl}"
+                                             data-voice-name="${item.char_name}"
+                                             data-status="ready"
+                                             style="width: ${bubbleWidth}px; cursor:pointer; display:flex; align-items:center; justify-content:space-between;">
+
+                                             ${BARS_HTML}
+
+                                             <span class="sovits-voice-duration" style="margin-left:auto;">${d}"</span>
+                                        </div>
+
+                                        <button class="fav-del-btn" style="background:transparent; border:none; color:#dc2626; opacity:0.6; padding:5px 10px;">🗑️</button>
                                     </div>
                                 </div>`;
                         }).join('');
@@ -187,23 +210,57 @@ window.TTS_Mobile = window.TTS_Mobile || {};
                         bindListEvents();
                     });
 
-                    // 6. 绑定列表按钮
+                    // 🟢 [修改] bindListEvents
                     function bindListEvents() {
-                        $content.find('.fav-play-btn').off().click(function(e) {
+                        let currentAudio = null;
+                        let $currentBubble = null;
+
+                        $content.find('.fav-play-bubble').off().click(function(e) {
                             e.stopPropagation();
-                            const $item = $(this).closest('.fav-item');
-                            let url = $item.data('url');
-                            if (url && url.startsWith('/') && window.TTS_API && window.TTS_API.baseUrl) {
-                                url = window.TTS_API.baseUrl + url;
+                            const $bubble = $(this);
+                            const url = $bubble.data('url');
+
+                            // 停止当前
+                            if ($bubble.hasClass('playing') && currentAudio) {
+                                currentAudio.pause();
+                                resetBubble($bubble);
+                                currentAudio = null;
+                                return;
                             }
-                            console.log("▶️ 尝试播放收藏:", url);
-                            if (window.TTS_Events && window.TTS_Events.playAudio) {
-                                window.TTS_Events.playAudio("fav_play_" + Date.now(), url);
-                            } else {
-                                new Audio(url).play();
+
+                            // 停止其他
+                            if (currentAudio) {
+                                currentAudio.pause();
+                                if ($currentBubble) resetBubble($currentBubble);
+                            }
+
+                            console.log("▶️ 气泡播放:", url);
+
+                            // 播放状态：变为 playing (通常会有呼吸灯效果)
+                            $bubble.addClass('playing');
+
+                            const audio = new Audio(url);
+                            currentAudio = audio;
+                            $currentBubble = $bubble;
+
+                            audio.play().catch(err => {
+                                console.error("播放失败", err);
+                                resetBubble($bubble);
+                            });
+
+                            audio.onended = function() {
+                                resetBubble($bubble);
+                                currentAudio = null;
+                            };
+
+                            function resetBubble($b) {
+                                // 🌟 重点：移除 playing，强制加回 ready，并确保 data-status 正确
+                                $b.removeClass('playing').addClass('ready');
+                                $b.attr('data-status', 'ready'); // 双重保险，防止变灰
                             }
                         });
 
+                        // ... 删除按钮逻辑保持不变 ...
                         $content.find('.fav-del-btn').off().click(async function(e) {
                             e.stopPropagation();
                             if(!confirm("确定删除这条收藏吗？")) return;
@@ -212,8 +269,6 @@ window.TTS_Mobile = window.TTS_Mobile || {};
                             try {
                                 await window.TTS_API.deleteFavorite(id);
                                 $item.fadeOut(300, function(){ $(this).remove(); });
-                                data.current = data.current.filter(i => i.id !== id);
-                                data.others = data.others.filter(i => i.id !== id);
                             } catch(err) { alert("删除失败: " + err.message); }
                         });
                     }
