@@ -43,7 +43,7 @@
 
             // 定义内部更新逻辑
             const _doUpdate = ($container) => {
-                $container.find('.voice-bubble.loading').each(function() {
+                $container.find('.voice-bubble.loading').each(function () {
                     const $btn = $(this);
                     const key = $btn.attr('data-key'); // 现在这里能取到值了！
 
@@ -64,11 +64,11 @@
             _doUpdate($('body'));
 
             // 2. 更新 Iframe 内部
-            $('iframe').each(function() {
+            $('iframe').each(function () {
                 try {
                     const $iframeBody = $(this).contents().find('body');
                     if ($iframeBody.length > 0) _doUpdate($iframeBody);
-                } catch (e) {}
+                } catch (e) { }
             });
         },
 
@@ -86,7 +86,7 @@
 
             // ================= IFRAME 模式 =================
             if (isIframeMode) {
-                $('iframe').each(function() {
+                $('iframe').each(function () {
                     try {
                         const $iframe = $(this);
                         const doc = $iframe.contents();
@@ -101,7 +101,7 @@
                         }
 
                         if (!body.data('tts-event-bound')) {
-                            body.on('click', '.voice-bubble', function(e) {
+                            body.on('click', '.voice-bubble', function (e) {
                                 e.stopPropagation();
                                 const $this = $(this);
                                 window.top.postMessage({
@@ -115,10 +115,48 @@
                             body.data('tts-event-bound', true);
                         }
 
-                        const targets = body.find('*').filter(function() {
+                        // === 【新增】Iframe 右键菜单支持 ===
+                        // 只需要绑定一次，避免重复
+                        if (!body.data('tts-context-bound')) {
+                            body.on('contextmenu', '.voice-bubble', function (e) {
+                                e.stopPropagation(); // 阻止内部冒泡
+
+                                // 计算 iframe 在主窗口的绝对位置
+                                const iframeRect = $iframe[0].getBoundingClientRect();
+
+                                // 构造一个伪事件对象，修正 clientX/Y
+                                const fakeEvent = {
+                                    preventDefault: () => e.preventDefault(),
+                                    clientX: iframeRect.left + e.clientX,
+                                    clientY: iframeRect.top + e.clientY,
+                                    originalEvent: e.originalEvent
+                                };
+
+                                // 修正触摸事件坐标 (如果有)
+                                if (e.originalEvent && e.originalEvent.touches && e.originalEvent.touches.length > 0) {
+                                    // 注意：OriginalEvent 的 touches 也是相对于 iframe 的视口的
+                                    // 这里简单处理，假装它是鼠标事件的 clientX/Y 修正
+                                    // 如果非常严格，需要深度克隆 touches 对象，这里暂略
+                                    fakeEvent.originalEvent = {
+                                        touches: [{
+                                            clientX: iframeRect.left + e.originalEvent.touches[0].clientX,
+                                            clientY: iframeRect.top + e.originalEvent.touches[0].clientY
+                                        }]
+                                    };
+                                }
+
+                                // 直接调用 Events 模块的方法
+                                if (window.TTS_Events && window.TTS_Events.handleContextMenu) {
+                                    window.TTS_Events.handleContextMenu(fakeEvent, $(this));
+                                }
+                            });
+                            body.data('tts-context-bound', true);
+                        }
+
+                        const targets = body.find('*').filter(function () {
                             if (['SCRIPT', 'STYLE', 'TEXTAREA', 'INPUT', 'BUTTON'].includes(this.tagName)) return false;
                             let hasTargetText = false;
-                            $(this).contents().each(function() {
+                            $(this).contents().each(function () {
                                 if (this.nodeType === 3 && this.nodeValue && this.nodeValue.indexOf("[TTSVoice") !== -1) {
                                     hasTargetText = true;
                                     return false;
@@ -127,7 +165,7 @@
                             return hasTargetText;
                         });
 
-                        targets.each(function() {
+                        targets.each(function () {
                             const $this = $(this);
                             const html = $this.html();
                             if (REGEX.test(html)) {
@@ -136,7 +174,7 @@
                                     if (!text) return match;
                                     const cleanName = name.trim();
                                     const cleanText = text.replace(/<[^>]+>|&lt;[^&]+&gt;/g, '').trim();
-                                    if(!cleanText) return match;
+                                    if (!cleanText) return match;
 
                                     const key = Scheduler.getTaskKey(cleanName, cleanText);
                                     let status = 'waiting';
@@ -181,7 +219,7 @@
                     document.body.setAttribute('data-bubble-style', activeStyle);
                 }
 
-                $('.mes_text, .message-body, .markdown-content').each(function() {
+                $('.mes_text, .message-body, .markdown-content').each(function () {
                     const $this = $(this);
                     const html = $this.html();
                     if (REGEX.test(html)) {
@@ -190,7 +228,7 @@
                             if (!text) return match;
                             const cleanName = name.trim();
                             const cleanText = text.replace(/<[^>]+>|&lt;[^&]+&gt;/g, '').trim();
-                            if(!cleanText) return match;
+                            if (!cleanText) return match;
 
                             const key = Scheduler.getTaskKey(cleanName, cleanText);
                             let status = 'waiting';

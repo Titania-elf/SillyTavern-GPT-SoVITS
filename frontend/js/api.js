@@ -3,12 +3,12 @@
     window.TTS_API = {
         baseUrl: "",
 
-        init: function(url) {
+        init: function (url) {
             this.baseUrl = url;
             console.log("🔵 [API] 服务地址已设定:", this.baseUrl);
         },
 
-        _url: function(endpoint) {
+        _url: function (endpoint) {
             return `${this.baseUrl}${endpoint}`;
         },
 
@@ -75,11 +75,12 @@
 
         async addFavorite(payload) {
             // payload 格式: { text, audio_url, char_name, context: [...] }
-            await fetch(this._url('/add_favorite'), {
+            const res = await fetch(this._url('/add_favorite'), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
             });
+            return await res.json();
         },
 
         async deleteFavorite(id) {

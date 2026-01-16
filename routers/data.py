@@ -142,10 +142,6 @@ CACHE_DIR = "Cache"
 FAV_AUDIO_DIR = "data/favorites_audio"
 @router.post("/add_favorite")
 def add_favorite(item: FavoriteItem):
-@router.post("/add_favorite")
-def add_favorite(item: FavoriteItem):
-    # favs loading removed, using DB
-    pass
 
     new_entry = item.dict()
     new_entry["id"] = str(uuid.uuid4())

@@ -22,8 +22,8 @@
             // 2. 暴力重置所有动画 UI
             const resetAnim = () => {
                 $('.voice-bubble').removeClass('playing');
-                $('iframe').each(function() {
-                    try { $(this).contents().find('.voice-bubble').removeClass('playing'); } catch(e){}
+                $('iframe').each(function () {
+                    try { $(this).contents().find('.voice-bubble').removeClass('playing'); } catch (e) { }
                 });
             };
             resetAnim();
@@ -37,8 +37,8 @@
             const setAnim = (active) => {
                 const func = active ? 'addClass' : 'removeClass';
                 $(`.voice-bubble[data-key='${key}']`)[func]('playing');
-                $('iframe').each(function(){
-                    try { $(this).contents().find(`.voice-bubble[data-key='${key}']`)[func]('playing'); } catch(e){}
+                $('iframe').each(function () {
+                    try { $(this).contents().find(`.voice-bubble[data-key='${key}']`)[func]('playing'); } catch (e) { }
                 });
             };
 
@@ -58,6 +58,35 @@
 
             audio.play();
         },
+        // === 提取出的菜单显示逻辑 (供 Iframe 调用) ===
+        handleContextMenu(e, $btn) {
+            e.preventDefault();
+
+            // 1. 只有已生成的语音才允许呼出菜单
+            if ($btn.attr('data-status') !== 'ready') return;
+
+            const $menu = $('#tts-bubble-menu');
+            $menu.data('target', $btn);
+
+            // 2. 计算坐标 (兼容 Iframe 传入的 e 可能是经过坐标修正的伪对象，也可能是原生事件)
+            let clientX = e.clientX;
+            let clientY = e.clientY;
+
+            // 兼容触摸
+            if (e.originalEvent && e.originalEvent.touches && e.originalEvent.touches.length > 0) {
+                clientX = e.originalEvent.touches[0].clientX;
+                clientY = e.originalEvent.touches[0].clientY;
+            }
+
+            // 3. 边界检测
+            let left = clientX + 10;
+            let top = clientY + 10;
+            if (left + 150 > $(window).width()) left = $(window).width() - 160;
+            if (top + 160 > $(window).height()) top = $(window).height() - 170;
+
+            $menu.css({ top: top + 'px', left: left + 'px' }).fadeIn(150);
+        },
+
         bindClickEvents() {
             $(document).on('click', '.voice-bubble', (e) => {
                 const $btn = $(e.currentTarget); // 使用 currentTarget 确保点到的是按钮本身
@@ -85,8 +114,8 @@
                         // 2. 清除主界面动画
                         $('.voice-bubble').removeClass('playing');
                         // 3. 清除 Iframe 内动画 (防止跨域报错用 try-catch)
-                        $('iframe').each(function() {
-                            try { $(this).contents().find('.voice-bubble').removeClass('playing'); } catch(e){}
+                        $('iframe').each(function () {
+                            try { $(this).contents().find('.voice-bubble').removeClass('playing'); } catch (e) { }
                         });
                         return; // 直接结束，不执行后续播放逻辑
                     }
@@ -109,7 +138,7 @@
 
                     if (!CACHE.mappings[charName]) {
                         // 调用 UI 模块显示面板
-                        if(window.TTS_UI) {
+                        if (window.TTS_UI) {
                             window.TTS_UI.showDashboard();
                             $('#tts-new-char').val(charName);
                             $('#tts-new-model').focus();
@@ -125,33 +154,7 @@
             });
             // === 【新增】右键 (PC) 或 长按 (手机) 呼出菜单 ===
             $(document).on('contextmenu', '.voice-bubble', (e) => {
-                // 1. 只有已生成的语音才允许呼出菜单（如果未生成想允许重试，可以去掉这个判断）
-                const $btn = $(e.currentTarget);
-                if ($btn.attr('data-status') !== 'ready') return;
-
-                e.preventDefault(); // 阻止浏览器默认的右键菜单
-
-                const $menu = $('#tts-bubble-menu');
-
-                // 2. 将被点击的气泡存入菜单数据中，供后续“重绘/收藏”使用
-                $menu.data('target', $btn);
-
-                // 3. 计算菜单位置 (兼容鼠标和触摸)
-                let clientX = e.clientX;
-                let clientY = e.clientY;
-                // 兼容部分触摸事件结构
-                if(e.originalEvent && e.originalEvent.touches && e.originalEvent.touches.length > 0) {
-                    clientX = e.originalEvent.touches[0].clientX;
-                    clientY = e.originalEvent.touches[0].clientY;
-                }
-
-                // 4. 简单的边界检测 (防止菜单超出屏幕右下角)
-                let left = clientX + 10;
-                let top = clientY + 10;
-                if (left + 150 > $(window).width()) left = $(window).width() - 160;
-                if (top + 160 > $(window).height()) top = $(window).height() - 170;
-
-                $menu.css({ top: top + 'px', left: left + 'px' }).fadeIn(150);
+                this.handleContextMenu(e, $(e.currentTarget));
             });
 
             // === 【新增】点击页面空白处关闭菜单 ===
@@ -174,7 +177,7 @@
 
                 // 1. 检查绑定
                 if (!CACHE.mappings[charName]) {
-                    if(window.TTS_UI) {
+                    if (window.TTS_UI) {
                         window.TTS_UI.showDashboard();
                         $('#tts-new-char').val(charName);
                         $('#tts-new-model').focus();
@@ -197,13 +200,13 @@
 
                 // 尝试定位真实 DOM 按钮
                 let $realBtn = null;
-                $('iframe').each(function() {
+                $('iframe').each(function () {
                     try {
                         const b = $(this).contents().find(`.voice-bubble[data-key='${key}']`);
-                        if(b.length) $realBtn = b;
-                    } catch(e){}
+                        if (b.length) $realBtn = b;
+                    } catch (e) { }
                 });
-                if(!$realBtn || !$realBtn.length) $realBtn = $(`.voice-bubble[data-key='${key}']`);
+                if (!$realBtn || !$realBtn.length) $realBtn = $(`.voice-bubble[data-key='${key}']`);
 
                 // 4. 执行调度
                 if ($realBtn && $realBtn.length) {
@@ -246,7 +249,7 @@
                     console.log(`🗑️ 准备删除服务端文件: ${serverFilename}`);
                     await window.TTS_API.deleteCache(serverFilename);
                     console.log(`✅ [Re-roll] 服务端缓存 ${serverFilename} 已删除`);
-                } catch(e) {
+                } catch (e) {
                     console.warn("删除缓存请求失败（可能是文件已不存在），继续执行重生成", e);
                 }
 
@@ -272,7 +275,7 @@
                 // 2. 停止当前可能正在播放的这段音频
                 if ($btn.hasClass('playing')) {
                     // 触发点击事件来停止，或者直接调用 API 停止
-                    if(window.TTS_Events.playAudio) window.TTS_Events.playAudio(null, null);
+                    if (window.TTS_Events.playAudio) window.TTS_Events.playAudio(null, null);
                 }
 
                 // 3. 重置按钮状态
@@ -326,12 +329,12 @@
 
                 try {
                     await window.TTS_API.addFavorite(favItem);
-                    if(window.TTS_Utils && window.TTS_Utils.showNotification) {
+                    if (window.TTS_Utils && window.TTS_Utils.showNotification) {
                         window.TTS_Utils.showNotification("❤️ 已收藏到分支: " + branchId, "success");
                     } else {
                         alert("❤️ 收藏成功！");
                     }
-                } catch(e) {
+                } catch (e) {
                     console.error(e);
                     alert("收藏失败: " + e.message);
                 }
