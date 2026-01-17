@@ -5,8 +5,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 # 导入配置和路由
-from config import FRONTEND_DIR
+from config import FRONTEND_DIR, init_settings
 from routers import data, tts, system
+
+# 初始化配置(确保 system_settings.json 和目录存在)
+init_settings()
 
 app = FastAPI()
 
