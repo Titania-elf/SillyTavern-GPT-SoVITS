@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SillyTavern GPT-SoVITS 管理面板</title>
+    <link rel="stylesheet" href="css/admin.css">
+</head>
+
+<body>
+    <div class="container">
+        <!-- 侧边栏 -->
+        <aside class="sidebar">
+            <div class="logo">
+                <h1>🎙️ TTS 管理</h1>
+                <p class="version">v1.0.0</p>
+            </div>
+
+            <nav class="nav">
+                <a href="#dashboard" class="nav-item active" data-page="dashboard">
+                    <span class="icon">📊</span>
+                    <span>仪表盘</span>
+                </a>
+                <a href="#models" class="nav-item" data-page="models">
+                    <span class="icon">🤖</span>
+                    <span>模型管理</span>
+                </a>
+                <a href="#audios" class="nav-item" data-page="audios">
+                    <span class="icon">🎵</span>
+                    <span>音频管理</span>
+                </a>
+                <a href="#settings" class="nav-item" data-page="settings">
+                    <span class="icon">⚙️</span>
+                    <span>系统配置</span>
+                </a>
+                <a href="#dependencies" class="nav-item" data-page="dependencies">
+                    <span class="icon">📦</span>
+                    <span>依赖管理</span>
+                </a>
+            </nav>
+        </aside>
+
+        <!-- 主内容区 -->
+        <main class="main-content">
+            <!-- 仪表盘页面 -->
+            <section id="dashboard" class="page active">
+                <header class="page-header">
+                    <h2>系统仪表盘</h2>
+                    <button class="btn btn-primary" onclick="refreshStatus()">🔄 刷新状态</button>
+                </header>
+
+                <div class="cards-grid">
+                    <!-- Python 环境 -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>🐍 Python 环境</h3>
+                            <span class="status-badge" id="python-status">检测中...</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="info-item">
+                                <span class="label">版本:</span>
+                                <span class="value" id="python-version">-</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="label">路径:</span>
+                                <span class="value small" id="python-path">-</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- GPT-SoVITS 服务 -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>🎙️ GPT-SoVITS 服务</h3>
+                            <span class="status-badge" id="sovits-status">检测中...</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="info-item">
+                                <span class="label">地址:</span>
+                                <span class="value" id="sovits-url">http://127.0.0.1:9880</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="label">状态:</span>
+                                <span class="value" id="sovits-state">-</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 后端服务 -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>⚡ 后端服务</h3>
+                            <span class="status-badge status-success">运行中</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="info-item">
+                                <span class="label">端口:</span>
+                                <span class="value">3000</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="label">API:</span>
+                                <span class="value">/api/admin</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 依赖包状态 -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>📦 依赖包</h3>
+                            <span class="status-badge" id="deps-status">检测中...</span>
+                        </div>
+                        <div class="card-body" id="deps-list">
+                            <p class="loading">正在检测...</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 模型管理页面 -->
+            <section id="models" class="page">
+                <header class="page-header">
+                    <h2>模型管理</h2>
+                    <button class="btn btn-primary" onclick="showCreateModelDialog()">➕ 创建新模型</button>
+                </header>
+
+                <div class="models-container" id="models-list">
+                    <p class="loading">加载中...</p>
+                </div>
+            </section>
+
+            <!-- 音频管理页面 -->
+            <section id="audios" class="page">
+                <header class="page-header">
+                    <h2>参考音频管理</h2>
+                    <div class="controls">
+                        <select id="audio-model-select" class="select" onchange="loadAudios()">
+                            <option value="">选择模型...</option>
+                        </select>
+                        <button class="btn btn-primary" onclick="showUploadDialog()" id="upload-btn" disabled>⬆️
+                            上传音频</button>
+                    </div>
+                </header>
+
+                <div class="audios-container" id="audios-list">
+                    <p class="placeholder">请先选择一个模型</p>
+                </div>
+            </section>
+
+            <!-- 系统配置页面 -->
+            <section id="settings" class="page">
+                <header class="page-header">
+                    <h2>系统配置</h2>
+                    <button class="btn btn-success" onclick="saveSettings()">💾 保存配置</button>
+                </header>
+
+                <div class="settings-form">
+                    <div class="form-group">
+                        <label>模型目录路径</label>
+                        <input type="text" id="setting-base-dir" class="input" placeholder="例: G:\Models\MyCharacters">
+                        <small>存放 GPT-SoVITS 模型的根目录</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label>缓存目录路径</label>
+                        <input type="text" id="setting-cache-dir" class="input" placeholder="例: G:\Cache">
+                        <small>存放生成音频缓存的目录</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label>GPT-SoVITS API 地址</label>
+                        <input type="text" id="setting-sovits-host" class="input" value="http://127.0.0.1:9880">
+                        <small>GPT-SoVITS 推理服务的 API 地址</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label>默认语言</label>
+                        <select id="setting-default-lang" class="select">
+                            <option value="Chinese">中文</option>
+                            <option value="Japanese">日语</option>
+                            <option value="English">英语</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>气泡风格</label>
+                        <select id="setting-bubble-style" class="select">
+                            <option value="default">森野·极简</option>
+                            <option value="kawaii">幻彩·琉璃</option>
+                            <option value="cyberpunk">赛博·霓虹</option>
+                            <option value="ink">水墨·烟雨</option>
+                            <option value="bloom">花信·初绽</option>
+                            <option value="scroll">羊皮·史诗</option>
+                            <option value="rouge">魅影·微醺</option>
+                            <option value="holo">星舰·光环</option>
+                            <option value="steampunk">蒸汽·机械</option>
+                            <option value="classic">旧日·回溯</option>
+                            <option value="obsidian">黑曜石·极夜</option>
+                            <option value="tactical">战术·指令</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group checkbox-group">
+                        <label>
+                            <input type="checkbox" id="setting-auto-generate">
+                            <span>启用自动预生成</span>
+                        </label>
+                        <small>AI 回复时自动在后台生成语音</small>
+                    </div>
+
+                    <div class="form-group checkbox-group">
+                        <label>
+                            <input type="checkbox" id="setting-iframe-mode">
+                            <span>美化卡专用模式 (Iframe Mode)</span>
+                        </label>
+                        <small>适用于高度定制化的美化卡</small>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 依赖管理页面 -->
+            <section id="dependencies" class="page">
+                <header class="page-header">
+                    <h2>依赖管理</h2>
+                    <button class="btn btn-primary" onclick="installDependencies()">🔧 一键安装依赖</button>
+                </header>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h3>依赖包状态</h3>
+                    </div>
+                    <div class="card-body">
+                        <table class="deps-table" id="deps-table">
+                            <thead>
+                                <tr>
+                                    <th>包名</th>
+                                    <th>状态</th>
+                                    <th>版本</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td colspan="3" class="loading">加载中...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="card" id="install-output" style="display: none;">
+                    <div class="card-header">
+                        <h3>安装输出</h3>
+                    </div>
+                    <div class="card-body">
+                        <pre id="install-log" class="log-output"></pre>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- 创建模型对话框 -->
+    <div id="create-model-dialog" class="dialog-overlay" style="display: none;">
+        <div class="dialog">
+            <div class="dialog-header">
+                <h3>创建新模型</h3>
+                <button class="close-btn" onclick="closeDialog('create-model-dialog')">✕</button>
+            </div>
+            <div class="dialog-body">
+                <div class="form-group">
+                    <label>模型名称</label>
+                    <input type="text" id="new-model-name" class="input" placeholder="例: 阿米娅">
+                    <small>将自动创建标准目录结构</small>
+                </div>
+            </div>
+            <div class="dialog-footer">
+                <button class="btn btn-secondary" onclick="closeDialog('create-model-dialog')">取消</button>
+                <button class="btn btn-primary" onclick="createModel()">创建</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 上传音频对话框 -->
+    <div id="upload-dialog" class="dialog-overlay" style="display: none;">
+        <div class="dialog">
+            <div class="dialog-header">
+                <h3>上传参考音频</h3>
+                <button class="close-btn" onclick="closeDialog('upload-dialog')">✕</button>
+            </div>
+            <div class="dialog-body">
+                <div class="form-group">
+                    <label>语言</label>
+                    <select id="upload-language" class="select">
+                        <option value="Chinese">中文</option>
+                        <option value="Japanese">日语</option>
+                        <option value="English">英语</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>情感标签</label>
+                    <input type="text" id="upload-emotion" class="input" placeholder="例: happy, sad, angry"
+                        value="default">
+                </div>
+                <div class="form-group">
+                    <label>音频文件</label>
+                    <input type="file" id="upload-file" class="input" accept=".wav,.mp3,.ogg,.flac">
+                </div>
+            </div>
+            <div class="dialog-footer">
+                <button class="btn btn-secondary" onclick="closeDialog('upload-dialog')">取消</button>
+                <button class="btn btn-primary" onclick="uploadAudio()">上传</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/admin.js"></script>
+</body>
+
+</html>

@@ -6,7 +6,7 @@ from fastapi.staticfiles import StaticFiles
 
 # 导入配置和路由
 from config import FRONTEND_DIR
-from routers import data, tts, system
+from routers import data, tts, system, admin
 
 app = FastAPI()
 
@@ -26,12 +26,20 @@ if os.path.exists(FRONTEND_DIR):
 else:
     print(f"Warning: 'frontend' folder not found at {FRONTEND_DIR}")
 
+# 挂载管理面板静态文件
+admin_dir = os.path.join(os.path.dirname(__file__), "admin")
+if os.path.exists(admin_dir):
+    app.mount("/admin", StaticFiles(directory=admin_dir, html=True), name="admin")
+else:
+    print(f"Warning: 'admin' folder not found at {admin_dir}")
+
 os.makedirs("data/favorites_audio", exist_ok=True)
 app.mount("/favorites", StaticFiles(directory="data/favorites_audio"), name="favorites")
 # 3. 注册路由
 app.include_router(data.router, tags=["Data Management"])
 app.include_router(tts.router, tags=["TTS Core"])
 app.include_router(system.router, tags=["System Settings"])
+app.include_router(admin.router, prefix="/api/admin", tags=["Admin Panel"])
 
 if __name__ == "__main__":
     # 必须是 0.0.0.0，否则局域网无法访问
