@@ -9,6 +9,9 @@ venv/
 .DS_Store
 Thumbs.db
 
+# --- IDE 配置文件 ---
+.idea/
+
 # --- 插件运行生成的缓存与设置 ---
 # 不上传生成的音频缓存
 Cache/*
