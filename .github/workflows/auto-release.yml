@@ -3,7 +3,8 @@ name: Auto Release
 on:
   push:
     branches:
-      - main
+      - main_v1.3  # 临时改为当前分支以便测试
+      - main       # 保留 main 分支
     paths:
       - 'manifest.json'
 
