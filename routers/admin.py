@@ -138,12 +138,53 @@ async def upload_audio(
         with open(target_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
         
+        # 【新增】检查音频时长
+        from utils import get_audio_duration, pad_audio_to_duration
+        
+        duration = get_audio_duration(target_path)
+        
+        if duration is None:
+            # 无法读取音频时长,删除文件并报错
+            os.remove(target_path)
+            raise HTTPException(status_code=400, detail="无法读取音频文件,请检查文件格式")
+        
+        # 检查时长范围
+        if duration > 10.0:
+            # 音频过长,删除文件并报错
+            os.remove(target_path)
+            raise HTTPException(
+                status_code=400, 
+                detail=f"音频时长过长 ({duration:.2f}秒),GPT-SoVITS 要求参考音频在 3-10 秒范围内。请剪辑后重新上传。"
+            )
+        
+        auto_padded = False
+        if duration < 3.0:
+            # 音频过短,自动填充到 3 秒
+            print(f"⚠️ 音频过短 ({duration:.2f}秒),自动填充到 3 秒: {new_filename}")
+            success = pad_audio_to_duration(target_path, 3.0)
+            if not success:
+                os.remove(target_path)
+                raise HTTPException(
+                    status_code=500, 
+                    detail=f"音频时长过短 ({duration:.2f}秒),自动填充失败。请手动延长音频后重新上传。"
+                )
+            auto_padded = True
+            duration = 3.0  # 更新时长
+        
         return {
             "success": True,
             "filename": new_filename,
-            "path": target_path
+            "path": target_path,
+            "duration": duration,
+            "auto_padded": auto_padded,
+            "message": f"上传成功! 音频时长: {duration:.2f}秒" + (" (已自动填充)" if auto_padded else "")
         }
+    except HTTPException:
+        raise
     except Exception as e:
+        # 清理可能已保存的文件
+        if os.path.exists(target_path):
+            os.remove(target_path)
         raise HTTPException(status_code=500, detail=f"文件保存失败: {str(e)}")
 
 @router.delete("/models/{model_name}/audios")
