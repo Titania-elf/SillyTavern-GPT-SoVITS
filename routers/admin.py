@@ -280,22 +280,7 @@ async def update_version():
     try:
         manager = VersionManager()
         
-        # 先检查是否有更新
-        check_result = manager.check_for_updates()
-        if not check_result.get('success'):
-            raise HTTPException(status_code=400, detail=check_result.get('error', '检查更新失败'))
-        
-        if check_result.get('is_git_repo'):
-            raise HTTPException(status_code=400, detail='这是一个 Git 仓库,请使用 git pull 更新')
-        
-        if not check_result.get('has_update'):
-            return {
-                "success": True,
-                "message": "当前已是最新版本",
-                "no_update": True
-            }
-        
-        # 执行更新
+        # 直接执行更新,download_and_update 会自动处理 Git 仓库和 ZIP 下载两种情况
         result = manager.download_and_update()
         
         if not result.get('success'):
