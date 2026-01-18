@@ -173,10 +173,43 @@
                     <input type="text" id="new-model-name" class="input" placeholder="例: 阿米娅">
                     <small>将自动创建标准目录结构</small>
                 </div>
+
+                <div class="form-group">
+                    <label>GPT 模型文件 (可选)</label>
+                    <input type="file" id="gpt-model-file" class="input" accept=".ckpt"
+                        onchange="previewModelFile('gpt')">
+                    <small>选择 .ckpt 文件,将自动复制到模型文件夹</small>
+                    <div id="gpt-file-preview" class="file-preview" style="display: none;">
+                        <span class="file-info"></span>
+                        <button type="button" class="btn-clear" onclick="clearModelFile('gpt')">✕</button>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>SoVITS 模型文件 (可选)</label>
+                    <input type="file" id="sovits-model-file" class="input" accept=".pth"
+                        onchange="previewModelFile('sovits')">
+                    <small>选择 .pth 文件,将自动复制到模型文件夹</small>
+                    <div id="sovits-file-preview" class="file-preview" style="display: none;">
+                        <span class="file-info"></span>
+                        <button type="button" class="btn-clear" onclick="clearModelFile('sovits')">✕</button>
+                    </div>
+                </div>
+
+                <!-- 上传进度条 -->
+                <div id="upload-progress-container" class="progress-container" style="display: none;">
+                    <div class="progress-bar">
+                        <div id="upload-progress-bar" class="progress-fill"></div>
+                    </div>
+                    <div class="progress-text">
+                        <span id="upload-progress-text">上传中...</span>
+                        <span id="upload-progress-percent">0%</span>
+                    </div>
+                </div>
             </div>
             <div class="dialog-footer">
                 <button class="btn btn-secondary" onclick="closeDialog('create-model-dialog')">取消</button>
-                <button class="btn btn-primary" onclick="createModel()">创建</button>
+                <button class="btn btn-primary" id="create-model-btn" onclick="createModel()">创建</button>
             </div>
         </div>
     </div>

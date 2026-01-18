@@ -160,8 +160,8 @@ class ModelManager:
         
         return audios
     
-    def create_model_structure(self, model_name: str) -> Dict[str, Any]:
-        """为新模型创建标准目录结构"""
+    def create_model_structure(self, model_name: str, gpt_file=None, sovits_file=None) -> Dict[str, Any]:
+        """为新模型创建标准目录结构,可选保存模型文件"""
         model_path = os.path.join(self.base_dir, model_name)
         
         if os.path.exists(model_path):
@@ -180,14 +180,37 @@ class ModelManager:
                 emotions_dir = os.path.join(ref_dir, lang, "emotions")
                 os.makedirs(emotions_dir, exist_ok=True)
             
+            # 保存模型文件(如果提供)
+            saved_files = {}
+            
+            if gpt_file:
+                gpt_path = os.path.join(model_path, f"{model_name}.ckpt")
+                with open(gpt_path, "wb") as f:
+                    import shutil
+                    shutil.copyfileobj(gpt_file.file, f)
+                saved_files["gpt_weights"] = gpt_path
+            
+            if sovits_file:
+                sovits_path = os.path.join(model_path, f"{model_name}.pth")
+                with open(sovits_path, "wb") as f:
+                    import shutil
+                    shutil.copyfileobj(sovits_file.file, f)
+                saved_files["sovits_weights"] = sovits_path
+            
             return {
                 "success": True,
-                "path": model_path
+                "path": model_path,
+                "saved_files": saved_files
             }
         except Exception as e:
+            # 如果出错,清理已创建的目录
+            if os.path.exists(model_path):
+                import shutil
+                shutil.rmtree(model_path, ignore_errors=True)
+            
             return {
                 "success": False,
-                "error": str(e)
+                "error": f"创建失败: {str(e)}"
             }
     
     def delete_audio(self, model_name: str, relative_path: str) -> Dict[str, Any]:

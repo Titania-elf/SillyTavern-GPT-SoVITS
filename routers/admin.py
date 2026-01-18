@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, UploadFile, File
+from fastapi import APIRouter, HTTPException, UploadFile, File, Form
 from fastapi.responses import JSONResponse
 from typing import Optional
 import os
@@ -43,16 +43,27 @@ async def get_models():
     }
 
 @router.post("/models/create")
-async def create_model(model_name: str):
-    """创建新模型目录结构"""
+async def create_model(
+    model_name: str = Form(...),
+    gpt_file: Optional[UploadFile] = File(None),
+    sovits_file: Optional[UploadFile] = File(None)
+):
+    """创建新模型目录结构,可选上传模型文件"""
     settings = init_settings()
     base_dir = settings.get("base_dir")
     
     if not base_dir:
         raise HTTPException(status_code=400, detail="模型目录未配置")
     
+    # 验证文件格式
+    if gpt_file and not gpt_file.filename.lower().endswith('.ckpt'):
+        raise HTTPException(status_code=400, detail="GPT模型文件必须是.ckpt格式")
+    
+    if sovits_file and not sovits_file.filename.lower().endswith('.pth'):
+        raise HTTPException(status_code=400, detail="SoVITS模型文件必须是.pth格式")
+    
     manager = ModelManager(base_dir)
-    result = manager.create_model_structure(model_name)
+    result = manager.create_model_structure(model_name, gpt_file, sovits_file)
     
     if not result["success"]:
         raise HTTPException(status_code=400, detail=result.get("error"))

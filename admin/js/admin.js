@@ -137,33 +137,142 @@ function renderModels(models) {
 function showCreateModelDialog() {
     document.getElementById('create-model-dialog').style.display = 'flex';
     document.getElementById('new-model-name').value = '';
+    // 清空文件选择
+    clearModelFile('gpt');
+    clearModelFile('sovits');
+    // 隐藏进度条
+    document.getElementById('upload-progress-container').style.display = 'none';
+}
+
+// 文件预览功能
+function previewModelFile(type) {
+    const fileInput = document.getElementById(`${type}-model-file`);
+    const preview = document.getElementById(`${type}-file-preview`);
+    const fileInfo = preview.querySelector('.file-info');
+
+    if (fileInput.files.length > 0) {
+        const file = fileInput.files[0];
+        const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
+
+        // 验证文件大小 (限制2GB)
+        if (file.size > 2 * 1024 * 1024 * 1024) {
+            showNotification('文件大小超过2GB限制', 'error');
+            fileInput.value = '';
+            return;
+        }
+
+        // 验证文件扩展名
+        const expectedExt = type === 'gpt' ? '.ckpt' : '.pth';
+        if (!file.name.toLowerCase().endsWith(expectedExt)) {
+            showNotification(`请选择${expectedExt}文件`, 'error');
+            fileInput.value = '';
+            return;
+        }
+
+        fileInfo.textContent = `📁 ${file.name} (${sizeMB} MB)`;
+        preview.style.display = 'flex';
+    } else {
+        preview.style.display = 'none';
+    }
+}
+
+// 清除文件选择
+function clearModelFile(type) {
+    const fileInput = document.getElementById(`${type}-model-file`);
+    const preview = document.getElementById(`${type}-file-preview`);
+
+    fileInput.value = '';
+    preview.style.display = 'none';
 }
 
 async function createModel() {
     const name = document.getElementById('new-model-name').value.trim();
+    const gptFileInput = document.getElementById('gpt-model-file');
+    const sovitsFileInput = document.getElementById('sovits-model-file');
+    const createBtn = document.getElementById('create-model-btn');
+    const progressContainer = document.getElementById('upload-progress-container');
+    const progressBar = document.getElementById('upload-progress-bar');
+    const progressText = document.getElementById('upload-progress-text');
+    const progressPercent = document.getElementById('upload-progress-percent');
 
     if (!name) {
         showNotification('请输入模型名称', 'warning');
         return;
     }
 
+    // 准备FormData
+    const formData = new FormData();
+    formData.append('model_name', name);
+
+    // 添加文件(如果有)
+    if (gptFileInput.files.length > 0) {
+        formData.append('gpt_file', gptFileInput.files[0]);
+    }
+    if (sovitsFileInput.files.length > 0) {
+        formData.append('sovits_file', sovitsFileInput.files[0]);
+    }
+
     try {
-        const response = await fetch(`${API_BASE}/models/create?model_name=${encodeURIComponent(name)}`, {
-            method: 'POST'
+        // 禁用创建按钮
+        createBtn.disabled = true;
+
+        // 显示进度条
+        progressContainer.style.display = 'block';
+        progressBar.style.width = '0%';
+        progressPercent.textContent = '0%';
+        progressText.textContent = '正在创建模型...';
+
+        // 使用XMLHttpRequest以支持进度监控
+        const xhr = new XMLHttpRequest();
+
+        // 进度监听
+        xhr.upload.addEventListener('progress', (e) => {
+            if (e.lengthComputable) {
+                const percentComplete = Math.round((e.loaded / e.total) * 100);
+                progressBar.style.width = percentComplete + '%';
+                progressPercent.textContent = percentComplete + '%';
+
+                if (percentComplete < 100) {
+                    progressText.textContent = '正在上传文件...';
+                } else {
+                    progressText.textContent = '处理中...';
+                }
+            }
         });
 
-        const data = await response.json();
+        // 完成监听
+        xhr.addEventListener('load', () => {
+            if (xhr.status >= 200 && xhr.status < 300) {
+                const data = JSON.parse(xhr.responseText);
+                showNotification(`模型 "${name}" 创建成功`, 'success');
+                closeDialog('create-model-dialog');
+                loadModels();
+            } else {
+                const data = JSON.parse(xhr.responseText);
+                showNotification(data.detail || '创建失败', 'error');
+            }
 
-        if (response.ok) {
-            showNotification(`模型 "${name}" 创建成功`, 'success');
-            closeDialog('create-model-dialog');
-            loadModels();
-        } else {
-            showNotification(data.detail || '创建失败', 'error');
-        }
+            // 重置UI
+            createBtn.disabled = false;
+            progressContainer.style.display = 'none';
+        });
+
+        // 错误监听
+        xhr.addEventListener('error', () => {
+            showNotification('创建失败,请检查后端服务', 'error');
+            createBtn.disabled = false;
+            progressContainer.style.display = 'none';
+        });
+
+        // 发送请求
+        xhr.open('POST', `${API_BASE}/models/create`);
+        xhr.send(formData);
+
     } catch (error) {
         console.error('创建模型失败:', error);
         showNotification('创建失败,请检查后端服务', 'error');
+        createBtn.disabled = false;
+        progressContainer.style.display = 'none';
     }
 }
 
@@ -420,9 +529,6 @@ async function loadSettings() {
         document.getElementById('setting-cache-dir').value = settings.cache_dir || '';
         document.getElementById('setting-sovits-host').value = settings.sovits_host || 'http://127.0.0.1:9880';
         document.getElementById('setting-default-lang').value = settings.default_lang || 'Chinese';
-        document.getElementById('setting-bubble-style').value = settings.bubble_style || 'default';
-        document.getElementById('setting-auto-generate').checked = settings.auto_generate || false;
-        document.getElementById('setting-iframe-mode').checked = settings.iframe_mode || false;
     } catch (error) {
         console.error('加载配置失败:', error);
     }
@@ -433,10 +539,7 @@ async function saveSettings() {
         base_dir: document.getElementById('setting-base-dir').value.trim(),
         cache_dir: document.getElementById('setting-cache-dir').value.trim(),
         sovits_host: document.getElementById('setting-sovits-host').value.trim(),
-        default_lang: document.getElementById('setting-default-lang').value,
-        bubble_style: document.getElementById('setting-bubble-style').value,
-        auto_generate: document.getElementById('setting-auto-generate').checked,
-        iframe_mode: document.getElementById('setting-iframe-mode').checked
+        default_lang: document.getElementById('setting-default-lang').value
     };
 
     try {
