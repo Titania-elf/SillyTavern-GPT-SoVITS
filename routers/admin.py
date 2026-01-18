@@ -239,6 +239,8 @@ async def stream_audio(model_name: str, relative_path: str):
     # 构建完整路径 (relative_path 是相对于 reference_audios 目录的)
     model_path = os.path.join(base_dir, model_name)
     ref_audio_dir = os.path.join(model_path, "reference_audios")
+    # 将前端的正斜杠路径转换为系统路径分隔符
+    relative_path = relative_path.replace('/', os.sep)
     audio_path = os.path.join(ref_audio_dir, relative_path)
     
     # 安全验证:确保路径在模型目录内

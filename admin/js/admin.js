@@ -392,7 +392,7 @@ async function uploadAudio() {
 }
 
 async function deleteAudio(relativePath) {
-    if (!confirm('确定要删除这个音频文件吗?')) {
+    if (!confirm('确定要删除这个音频文件吗?\n\n⚠️ 注意:删除后无法恢复!!')) {
         return;
     }
 

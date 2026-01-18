@@ -140,9 +140,11 @@ class ModelManager:
                 if any(file.lower().endswith(ext) for ext in ['.wav', '.mp3', '.ogg', '.flac']):
                     full_path = os.path.join(root, file)
                     rel_path = os.path.relpath(full_path, ref_dir)
+                    # 统一使用正斜杠,避免Windows路径分隔符在前端被误解析
+                    rel_path = rel_path.replace(os.sep, '/')
                     
                     # 解析路径结构
-                    parts = rel_path.split(os.sep)
+                    parts = rel_path.split('/')
                     language = "default"
                     emotion = self._extract_emotion(file)
                     
@@ -217,6 +219,8 @@ class ModelManager:
         """删除参考音频"""
         model_path = os.path.join(self.base_dir, model_name)
         ref_dir = os.path.join(model_path, "reference_audios")
+        # 将前端的正斜杠路径转换为系统路径分隔符
+        relative_path = relative_path.replace('/', os.sep)
         audio_path = os.path.join(ref_dir, relative_path)
         
         if not os.path.exists(audio_path):
@@ -279,6 +283,8 @@ class ModelManager:
         """重命名参考音频文件"""
         model_path = os.path.join(self.base_dir, model_name)
         ref_dir = os.path.join(model_path, "reference_audios")
+        # 将前端的正斜杠路径转换为系统路径分隔符
+        relative_path = relative_path.replace('/', os.sep)
         old_path = os.path.join(ref_dir, relative_path)
         
         # 验证旧文件路径
@@ -322,8 +328,8 @@ class ModelManager:
         try:
             os.rename(old_path, new_path)
             
-            # 计算新的相对路径
-            new_relative_path = os.path.relpath(new_path, ref_dir)
+            # 计算新的相对路径,统一使用正斜杠
+            new_relative_path = os.path.relpath(new_path, ref_dir).replace(os.sep, '/')
             
             return {
                 "success": True,
