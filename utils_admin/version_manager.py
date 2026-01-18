@@ -262,10 +262,24 @@ class VersionManager:
                 cwd=self.base_dir
             )
             
+            # 自动暂存所有本地更改(包括未跟踪的文件)
+            # 这样用户不需要手动处理,更新会自动进行
+            stash_needed = False
             if status_result.stdout.strip():
-                result['error'] = '检测到未提交的更改,请先提交或暂存更改后再更新'
-                result['has_uncommitted_changes'] = True
-                return result
+                try:
+                    # 暂存所有更改,包括未跟踪的文件
+                    stash_result = subprocess.run(
+                        ['git', 'stash', 'push', '-u', '-m', 'Auto-stash before update'],
+                        capture_output=True,
+                        text=True,
+                        timeout=10,
+                        cwd=self.base_dir
+                    )
+                    if stash_result.returncode == 0:
+                        stash_needed = True
+                except Exception as e:
+                    result['error'] = f'暂存本地更改失败: {str(e)}'
+                    return result
             
             if progress_callback:
                 progress_callback(3, 5, '正在获取远程更新...')
@@ -301,6 +315,24 @@ class VersionManager:
             
             if progress_callback:
                 progress_callback(5, 5, '更新完成!')
+            
+            # 如果之前暂存了用户的修改,尝试恢复
+            if stash_needed:
+                try:
+                    pop_result = subprocess.run(
+                        ['git', 'stash', 'pop'],
+                        capture_output=True,
+                        text=True,
+                        timeout=10,
+                        cwd=self.base_dir
+                    )
+                    # 即使恢复失败也不影响更新成功的状态
+                    # 只是在消息中提示用户
+                    if pop_result.returncode != 0:
+                        result['stash_conflict'] = True
+                        result['stash_message'] = '更新成功,但恢复本地修改时发生冲突,请手动运行 git stash pop 处理'
+                except:
+                    pass
             
             # 检查是否有实际更新
             output = pull_result.stdout.strip()
