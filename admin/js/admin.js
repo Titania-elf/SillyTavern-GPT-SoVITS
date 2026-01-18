@@ -328,7 +328,7 @@ function renderAudios(audios) {
                 <span class="tag">📦 ${formatFileSize(audio.size)}</span>
             </div>
             <audio controls style="width: 100%; margin-top: 0.5rem;">
-                <source src="file:///${audio.path}" type="audio/wav">
+                <source src="${API_BASE}/models/${encodeURIComponent(currentSelectedModel)}/audios/stream?relative_path=${encodeURIComponent(audio.relative_path)}" type="audio/wav">
             </audio>
             <div class="audio-controls">
                 <button class="btn btn-secondary" onclick="showRenameDialog('${currentSelectedModel}', '${audio.relative_path.replace(/\\/g, '\\\\')}', '${audio.filename}')">

@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, UploadFile, File, Form
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
 from typing import Optional
 import os
 import shutil
@@ -223,3 +223,37 @@ async def update_settings(settings: dict):
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"配置保存失败: {str(e)}")
+
+# ==================== 音频文件流式传输 ====================
+
+@router.get("/models/{model_name}/audios/stream")
+async def stream_audio(model_name: str, relative_path: str):
+    """流式传输参考音频文件"""
+    settings = init_settings()
+    base_dir = settings.get("base_dir")
+    
+    if not base_dir:
+        raise HTTPException(status_code=400, detail="模型目录未配置")
+    
+    # 构建完整路径 (relative_path 是相对于 reference_audios 目录的)
+    model_path = os.path.join(base_dir, model_name)
+    ref_audio_dir = os.path.join(model_path, "reference_audios")
+    audio_path = os.path.join(ref_audio_dir, relative_path)
+    
+    # 安全验证:确保路径在模型目录内
+    audio_path = os.path.normpath(audio_path)
+    model_path = os.path.normpath(model_path)
+    
+    if not audio_path.startswith(model_path):
+        raise HTTPException(status_code=403, detail="非法路径访问")
+    
+    # 检查文件是否存在
+    if not os.path.exists(audio_path):
+        raise HTTPException(status_code=404, detail="音频文件不存在")
+    
+    # 返回音频文件
+    return FileResponse(
+        audio_path,
+        media_type="audio/wav",
+        headers={"Accept-Ranges": "bytes"}
+    )
