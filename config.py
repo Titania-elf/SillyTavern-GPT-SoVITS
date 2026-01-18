@@ -43,7 +43,8 @@ def init_settings():
         "cache_dir": DEFAULT_CACHE_DIR,
         "default_lang": "Chinese",
         "iframe_mode": False,
-        "bubble_style": "default"
+        "bubble_style": "default",
+        "sovits_host": SOVITS_HOST
     }
 
     for key, val in defaults.items():
@@ -71,3 +72,8 @@ def init_settings():
 def get_current_dirs():
     s = init_settings()
     return s["base_dir"], s["cache_dir"]
+
+def get_sovits_host():
+    """获取配置的 GPT-SoVITS 服务地址"""
+    s = init_settings()
+    return s.get("sovits_host", SOVITS_HOST)

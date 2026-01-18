@@ -5,7 +5,7 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse
 from typing import Optional
 
-from config import get_current_dirs, SOVITS_HOST
+from config import get_current_dirs, get_sovits_host
 from utils import maintain_cache_size
 
 router = APIRouter()
@@ -13,7 +13,7 @@ router = APIRouter()
 @router.get("/proxy_set_gpt_weights")
 def proxy_set_gpt_weights(weights_path: str):
     try:
-        url = f"{SOVITS_HOST}/set_gpt_weights"
+        url = f"{get_sovits_host()}/set_gpt_weights"
         resp = requests.get(url, params={"weights_path": weights_path}, timeout=10)
         return {"status": resp.status_code, "detail": resp.text}
     except Exception as e:
@@ -23,7 +23,7 @@ def proxy_set_gpt_weights(weights_path: str):
 @router.get("/proxy_set_sovits_weights")
 def proxy_set_sovits_weights(weights_path: str):
     try:
-        url = f"{SOVITS_HOST}/set_sovits_weights"
+        url = f"{get_sovits_host()}/set_sovits_weights"
         resp = requests.get(url, params={"weights_path": weights_path}, timeout=10)
         return {"status": resp.status_code, "detail": resp.text}
     except Exception as e:
@@ -66,7 +66,7 @@ def tts_proxy(text: str, text_lang: str, ref_audio_path: str, prompt_text: str, 
         maintain_cache_size(cache_dir)
 
         # 转发请求给 SoVITS (非流式)
-        url = f"{SOVITS_HOST}/tts"
+        url = f"{get_sovits_host()}/tts"
         params = {
             "text": text,
             "text_lang": text_lang,

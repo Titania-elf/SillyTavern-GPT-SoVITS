@@ -25,7 +25,12 @@ pip install -r requirements.txt
 echo.
 echo [INFO] Preparing to start Manager...
 echo [INFO] If "Uvicorn running..." appears, the startup is successful.
+echo [INFO] Admin UI will open automatically in your browser...
 echo ---------------------------------------------------
+
+:: 后台启动一个延迟任务,5秒后自动打开浏览器
+start /b cmd /c "timeout /t 5 /nobreak >nul && start http://localhost:3000/admin"
+
 python manager.py
 
 :: 4. Pause on exit
