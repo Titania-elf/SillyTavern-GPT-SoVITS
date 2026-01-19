@@ -127,24 +127,52 @@ async def parse_and_generate(req: ParseAndGenerateRequest):
         # 获取可用情绪
         emotions = EmotionService.get_available_emotions(req.char_name)
         
-        # 解析响应 - 优先使用 JSON 格式
+        # 解析响应 - 优先使用 JSON 格式,带超时保护
+        import asyncio
+        
         response_parser = ResponseParser()
         parse_format = parser_config.get("format", "json")  # 默认使用 JSON
         
-        if parse_format == "json":
-            print(f"[ParseAndGenerate] 使用 JSON 格式解析")
-            segments = response_parser.parse_json_response(
-                req.llm_response,
-                parser_config,
-                available_emotions=emotions
-            )
-        else:
-            print(f"[ParseAndGenerate] 使用正则格式解析")
-            segments = response_parser.parse_emotion_segments(
-                req.llm_response,
-                parser_config,
-                available_emotions=emotions
-            )
+        # 定义异步包装器以支持超时控制
+        async def parse_with_timeout():
+            if parse_format == "json":
+                print(f"[ParseAndGenerate] 使用 JSON 格式解析")
+                return response_parser.parse_json_response(
+                    req.llm_response,
+                    parser_config,
+                    available_emotions=emotions
+                )
+            else:
+                print(f"[ParseAndGenerate] 使用正则格式解析")
+                return response_parser.parse_emotion_segments(
+                    req.llm_response,
+                    parser_config,
+                    available_emotions=emotions
+                )
+        
+        # 带超时和重试的解析
+        max_retries = 1
+        timeout_seconds = 90
+        segments = None
+        
+        for attempt in range(max_retries + 1):
+            try:
+                print(f"[ParseAndGenerate] 开始解析 (尝试 {attempt + 1}/{max_retries + 1}, 超时限制: {timeout_seconds}秒)")
+                segments = await asyncio.wait_for(parse_with_timeout(), timeout=timeout_seconds)
+                print(f"[ParseAndGenerate] ✅ 解析成功")
+                break
+            except asyncio.TimeoutError:
+                if attempt < max_retries:
+                    print(f"[ParseAndGenerate] ⚠️ 解析超时 ({timeout_seconds}秒),正在重试...")
+                else:
+                    print(f"[ParseAndGenerate] ❌ 解析超时且重试失败")
+                    raise HTTPException(status_code=504, detail=f"解析响应超时 (>{timeout_seconds}秒)")
+            except Exception as e:
+                print(f"[ParseAndGenerate] ❌ 解析失败: {str(e)}")
+                raise
+        
+        if segments is None:
+            raise HTTPException(status_code=500, detail="解析失败,未获取到有效片段")
         
         print(f"[ParseAndGenerate] 解析到 {len(segments)} 个情绪片段")
         
