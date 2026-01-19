@@ -128,6 +128,11 @@
                     continue;
                 }
 
+                // 为每个任务预选参考音频(只选择一次)
+                tasks.forEach(task => {
+                    task.selectedRef = this.selectRefAudio(task, modelConfig);
+                });
+
                 const checkPromises = tasks.map(async (task) => {
                     if (CACHE.audioMemory[task.key]) return { task, cached: true };
                     const result = await this.checkCache(task, modelConfig);
@@ -170,38 +175,19 @@
 
         async checkCache(task, modelConfig) {
             try {
-                const settings = window.TTS_State.CACHE.settings;
-                const currentLang = settings.default_lang || 'default';
-                let availableLangs = modelConfig.languages || {};
-                let targetRefs = availableLangs[currentLang];
-
-                if (!targetRefs) {
-                    if (availableLangs['default']) targetRefs = availableLangs['default'];
-                    else {
-                        const keys = Object.keys(availableLangs);
-                        if (keys.length > 0) targetRefs = availableLangs[keys[0]];
-                    }
-                }
-
-                if (!targetRefs || targetRefs.length === 0) return false;
-
-                // 随机选择相同情绪的参考音频
-                let matchedRefs = targetRefs.filter(r => r.emotion === task.emotion);
-                if (matchedRefs.length === 0) matchedRefs = targetRefs.filter(r => r.emotion === 'default');
-                if (matchedRefs.length === 0) matchedRefs = targetRefs;
-                let ref = matchedRefs[Math.floor(Math.random() * matchedRefs.length)];
-
-                if (!ref) return false;
+                const ref = task.selectedRef; // 直接使用预选的ref
+                if (!ref) return { cached: false };
 
                 const params = {
                     text: task.text,
                     text_lang: "zh",
                     ref_audio_path: ref.path,
                     prompt_text: ref.text,
-                    prompt_lang: "zh"
+                    prompt_lang: "zh",
+                    emotion: task.emotion  // 传递情绪
                 };
                 return await window.TTS_API.checkCache(params);
-            } catch { return false; }
+            } catch { return { cached: false }; }
         },
 
         async switchModel(config) {
@@ -224,31 +210,16 @@
             const settings = window.TTS_State.CACHE.settings;
             const CACHE = window.TTS_State.CACHE;
 
-            const currentLang = settings.default_lang || 'default';
-            let availableLangs = modelConfig.languages || {};
-            let targetRefs = availableLangs[currentLang];
+            const ref = task.selectedRef; // 直接使用预选的ref
 
-            if (!targetRefs) {
-                if (availableLangs['default']) targetRefs = availableLangs['default'];
-                else {
-                    const keys = Object.keys(availableLangs);
-                    if (keys.length > 0) targetRefs = availableLangs[keys[0]];
-                }
-            }
-
-            if (!targetRefs) {
+            if (!ref) {
                 this.updateStatus($btn, 'error');
                 CACHE.pendingTasks.delete(key);
                 return;
             }
 
-            // 随机选择相同情绪的参考音频
-            let matchedRefs = targetRefs.filter(r => r.emotion === emotion);
-            if (matchedRefs.length === 0) matchedRefs = targetRefs.filter(r => r.emotion === 'default');
-            if (matchedRefs.length === 0) matchedRefs = targetRefs;
-            let ref = matchedRefs[Math.floor(Math.random() * matchedRefs.length)];
-
             try {
+                const currentLang = settings.default_lang || 'default';
                 let promptLangCode = "zh";
                 if (currentLang === "Japanese" || currentLang === "日语") promptLangCode = "ja";
                 if (currentLang === "English" || currentLang === "英语") promptLangCode = "en";
@@ -258,7 +229,8 @@
                     text_lang: promptLangCode,
                     ref_audio_path: ref.path,
                     prompt_text: ref.text,
-                    prompt_lang: promptLangCode
+                    prompt_lang: promptLangCode,
+                    emotion: emotion  // 传递情绪
                 };
 
                 const { blob, filename } = await window.TTS_API.generateAudio(params);
@@ -276,7 +248,34 @@
             }
         },
 
-        // 初始化方法（目前留空，可用于以后设置监听器）
+        // 选择参考音频(只选择一次,避免重复随机)
+        selectRefAudio(task, modelConfig) {
+            const settings = window.TTS_State.CACHE.settings;
+            const currentLang = settings.default_lang || 'default';
+            let availableLangs = modelConfig.languages || {};
+            let targetRefs = availableLangs[currentLang];
+
+            // 语言回退逻辑
+            if (!targetRefs) {
+                if (availableLangs['default']) targetRefs = availableLangs['default'];
+                else {
+                    const keys = Object.keys(availableLangs);
+                    if (keys.length > 0) targetRefs = availableLangs[keys[0]];
+                }
+            }
+
+            if (!targetRefs || targetRefs.length === 0) return null;
+
+            // 情绪匹配逻辑
+            let matchedRefs = targetRefs.filter(r => r.emotion === task.emotion);
+            if (matchedRefs.length === 0) matchedRefs = targetRefs.filter(r => r.emotion === 'default');
+            if (matchedRefs.length === 0) matchedRefs = targetRefs;
+
+            // 随机选择一次
+            return matchedRefs[Math.floor(Math.random() * matchedRefs.length)];
+        },
+
+        // 初始化方法(目前留空,可用于以后设置监听器)
         init() {
             console.log("✅ [Scheduler] 调度器已加载");
         }

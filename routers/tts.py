@@ -31,37 +31,60 @@ def proxy_set_sovits_weights(weights_path: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/tts_proxy")
-def tts_proxy(text: str, text_lang: str, ref_audio_path: str, prompt_text: str, prompt_lang: str, streaming_mode: Optional[str] = "false", check_only: Optional[str] = None):
+def tts_proxy(
+    text: str, 
+    text_lang: str, 
+    ref_audio_path: str, 
+    prompt_text: str, 
+    prompt_lang: str, 
+    emotion: Optional[str] = "default",
+    streaming_mode: Optional[str] = "false", 
+    check_only: Optional[str] = None
+):
     _, cache_dir = get_current_dirs()
 
     try:
-        # 生成缓存Key
-        raw_key = f"{text}_{ref_audio_path}_{prompt_text}_{text_lang}_{prompt_lang}"
-        file_hash = hashlib.md5(raw_key.encode('utf-8')).hexdigest()
+        # 新缓存Key: 包含情绪,不包含具体音频路径
+        new_key = f"{text}_{emotion}_{text_lang}_{prompt_lang}"
+        new_hash = hashlib.md5(new_key.encode('utf-8')).hexdigest()
+        new_filename = f"{new_hash}.wav"
+        new_cache_path = os.path.join(cache_dir, new_filename)
+        
+        # 旧缓存Key: 包含音频路径 (用于兼容旧数据)
+        old_key = f"{text}_{ref_audio_path}_{prompt_text}_{text_lang}_{prompt_lang}"
+        old_hash = hashlib.md5(old_key.encode('utf-8')).hexdigest()
+        old_filename = f"{old_hash}.wav"
+        old_cache_path = os.path.join(cache_dir, old_filename)
 
-        # 【修改 1】明确定义文件名变量，方便后续使用
-        filename = f"{file_hash}.wav"
-        cache_file_path = os.path.join(cache_dir, filename)
-
-        # 【修改 2】定义响应头 (Headers)
-        # X-Audio-Filename: 告诉前端这个音频在服务器叫什么名字
-        # Access-Control-Expose-Headers: 允许前端 JS 读取这个自定义 header (否则会被浏览器拦截)
+        # 响应头
         custom_headers = {
-            "X-Audio-Filename": filename,
+            "X-Audio-Filename": new_filename,
             "Access-Control-Expose-Headers": "X-Audio-Filename"
         }
 
         # 检查缓存是否存在
         if check_only == "true":
-            # 【修改 3】check_only 模式下，也返回 filename，方便前端记录
+            # 优先检查新缓存,回退检查旧缓存
+            cached = os.path.exists(new_cache_path) or os.path.exists(old_cache_path)
             return {
-                "cached": os.path.exists(cache_file_path),
-                "filename": filename
+                "cached": cached,
+                "filename": new_filename
             }
 
-        if os.path.exists(cache_file_path):
-            # 【修改 4】缓存命中时，带上 headers 返回
-            return FileResponse(cache_file_path, media_type="audio/wav", headers=custom_headers)
+        # 优先查找新缓存
+        if os.path.exists(new_cache_path):
+            return FileResponse(new_cache_path, media_type="audio/wav", headers=custom_headers)
+
+        # 回退查找旧缓存
+        if os.path.exists(old_cache_path):
+            # 找到旧缓存,复制到新Key (逐步迁移)
+            try:
+                import shutil
+                shutil.copy2(old_cache_path, new_cache_path)
+                print(f"[Cache Migration] {old_filename} -> {new_filename}")
+            except Exception as e:
+                print(f"[Cache Migration Failed] {e}")
+            return FileResponse(old_cache_path, media_type="audio/wav", headers=custom_headers)
 
         maintain_cache_size(cache_dir)
 
@@ -85,16 +108,16 @@ def tts_proxy(text: str, text_lang: str, ref_audio_path: str, prompt_text: str, 
         if r.status_code != 200:
             raise HTTPException(status_code=500, detail=f"SoVITS Error: {r.status_code}")
 
-        # 保存文件逻辑
-        temp_path = cache_file_path + ".tmp"
+        # 保存到新缓存路径
+        temp_path = new_cache_path + ".tmp"
 
         try:
             with open(temp_path, "wb") as f:
                 f.write(r.content)
 
-            if os.path.exists(cache_file_path):
-                os.remove(cache_file_path)
-            os.rename(temp_path, cache_file_path)
+            if os.path.exists(new_cache_path):
+                os.remove(new_cache_path)
+            os.rename(temp_path, new_cache_path)
 
         except Exception as e:
             print(f"文件保存错误: {e}")
@@ -102,8 +125,8 @@ def tts_proxy(text: str, text_lang: str, ref_audio_path: str, prompt_text: str, 
                 os.remove(temp_path)
             raise HTTPException(status_code=500, detail="Failed to save audio file")
 
-        # 【修改 5】新生成文件返回时，也带上 headers
-        return FileResponse(cache_file_path, media_type="audio/wav", headers=custom_headers)
+        # 新生成文件返回时,也带上 headers
+        return FileResponse(new_cache_path, media_type="audio/wav", headers=custom_headers)
 
     except HTTPException as he:
         raise he
