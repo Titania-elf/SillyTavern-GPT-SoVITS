@@ -4,6 +4,17 @@
     // 本地兜底正则
     const FALLBACK_REGEX = /\[TTSVoice\s*:\s*([^:]+)\s*:\s*([^\]]+)\]\s*([^[\n<]+)/gi;
 
+    // HTML 属性转义函数，防止特殊字符破坏 HTML 结构
+    function escapeHtmlAttr(str) {
+        if (!str) return '';
+        return str
+            .replace(/&/g, '&amp;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
+    }
+
     window.TTS_Parser = {
         htmlCache: {},
         init() {
@@ -191,11 +202,16 @@
                                     const bubbleWidth = Math.min(220, 60 + d * 10);
                                     const prefix = spaceChars || '';
 
-                                    // 【关键修复】这里加了 data-key="${key}"
+                                    // 对 HTML 属性值进行转义，防止特殊字符破坏结构
+                                    const safeKey = escapeHtmlAttr(key);
+                                    const safeText = escapeHtmlAttr(cleanText);
+                                    const safeName = escapeHtmlAttr(cleanName);
+                                    const safeEmotion = escapeHtmlAttr(emotion.trim());
+
                                     return `${prefix}<span class="voice-bubble ${loadingClass}"
                                     style="width: ${bubbleWidth}px"
-                                    data-status="${status}" data-key="${key}" ${dataUrlAttr} data-text="${cleanText}"
-                                    data-voice-name="${cleanName}" data-voice-emotion="${emotion.trim()}">
+                                    data-status="${status}" data-key="${safeKey}" ${dataUrlAttr} data-text="${safeText}"
+                                    data-voice-name="${safeName}" data-voice-emotion="${safeEmotion}">
                                     ${BARS_HTML}
                                     <span class="sovits-voice-duration">${d}"</span>
                                 </span>`;
@@ -244,10 +260,17 @@
                             const d = Math.max(1, Math.ceil(cleanText.length * 0.25));
                             const bubbleWidth = Math.min(220, 60 + d * 10);
                             const prefix = spaceChars || '';
+
+                            // 对 HTML 属性值进行转义，防止特殊字符破坏结构
+                            const safeKey = escapeHtmlAttr(key);
+                            const safeText = escapeHtmlAttr(cleanText);
+                            const safeName = escapeHtmlAttr(cleanName);
+                            const safeEmotion = escapeHtmlAttr(emotion.trim());
+
                             return `${prefix}<span class="voice-bubble ${loadingClass}"
                             style="width: ${bubbleWidth}px"
-                            data-status="${status}" data-key="${key}" ${dataUrlAttr} data-text="${cleanText}"
-                            data-voice-name="${cleanName}" data-voice-emotion="${emotion.trim()}">
+                            data-status="${status}" data-key="${safeKey}" ${dataUrlAttr} data-text="${safeText}"
+                            data-voice-name="${safeName}" data-voice-emotion="${safeEmotion}">
                             ${BARS_HTML}
                             <span class="sovits-voice-duration">${d}"</span>
                         </span>`;

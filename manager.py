@@ -22,7 +22,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
     allow_credentials=True,  # 允许携带凭证
-    expose_headers=["X-Audio-Filename"]  # 显式列出响应头,Chrome Android对通配符支持不完整
+    expose_headers=["*"]  # 暴露所有响应头
 )
 
 # 2. 挂载静态文件 (前端界面)

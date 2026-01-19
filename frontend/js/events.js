@@ -33,12 +33,19 @@
             const audio = new Audio(audioUrl);
             currentAudio = audio;
 
-            // 4. 定义动画同步函数
+            // 4. 定义动画同步函数 (使用 filter 方法避免特殊字符导致选择器语法错误)
             const setAnim = (active) => {
                 const func = active ? 'addClass' : 'removeClass';
-                $(`.voice-bubble[data-key='${key}']`)[func]('playing');
+                // 使用 filter + 属性比较，避免 key 中的特殊字符破坏选择器
+                $('.voice-bubble').filter(function () {
+                    return $(this).attr('data-key') === key;
+                })[func]('playing');
                 $('iframe').each(function () {
-                    try { $(this).contents().find(`.voice-bubble[data-key='${key}']`)[func]('playing'); } catch (e) { }
+                    try {
+                        $(this).contents().find('.voice-bubble').filter(function () {
+                            return $(this).attr('data-key') === key;
+                        })[func]('playing');
+                    } catch (e) { }
                 });
             };
 
@@ -96,24 +103,9 @@
 
                 // 状态 A: 已生成 (Ready)
                 if ($btn.attr('data-status') === 'ready') {
-                    const key = $btn.data('key') || Scheduler.getTaskKey(charName, $btn.data('text'));
+                    const audioUrl = $btn.attr('data-audio-url') || $btn.data('audio-url');
 
-                    // 🔧 优先从内存缓存读取 (最可靠)
-                    let audioUrl = CACHE.audioMemory[key];
-
-                    // 🔧 回退到 DOM 属性
                     if (!audioUrl) {
-                        audioUrl = $btn.attr('data-audio-url') || $btn.data('audio-url');
-                    }
-
-                    // 🔧 添加调试日志
-                    if (!audioUrl) {
-                        console.error('[TTS] 音频 URL 丢失', {
-                            key: key,
-                            memoryCache: !!CACHE.audioMemory[key],
-                            domAttr: $btn.attr('data-audio-url'),
-                            domData: $btn.data('audio-url')
-                        });
                         $btn.attr('data-status', 'error').removeClass('playing');
                         alert("音频丢失，请刷新页面或点击重试");
                         return;
@@ -135,6 +127,9 @@
                         return; // 直接结束，不执行后续播放逻辑
                     }
                     // ========================================================
+
+                    // 获取 key (如果没有 data-key，尝试用 Scheduler 生成一个，兼容旧版)
+                    const key = $btn.data('key') || Scheduler.getTaskKey(charName, $btn.data('text'));
 
                     // 【重要修复】强制将 key 写入 DOM，确保 playAudio 能通过属性选择器找到它
                     $btn.attr('data-key', key);
@@ -210,15 +205,21 @@
                 // 3. 准备生成
                 if (CACHE.settings.enabled === false) { alert('TTS 插件已关闭'); return; }
 
-                // 尝试定位真实 DOM 按钮
+                // 尝试定位真实 DOM 按钮 (使用 filter 方法避免特殊字符导致选择器语法错误)
                 let $realBtn = null;
                 $('iframe').each(function () {
                     try {
-                        const b = $(this).contents().find(`.voice-bubble[data-key='${key}']`);
+                        const b = $(this).contents().find('.voice-bubble').filter(function () {
+                            return $(this).attr('data-key') === key;
+                        });
                         if (b.length) $realBtn = b;
                     } catch (e) { }
                 });
-                if (!$realBtn || !$realBtn.length) $realBtn = $(`.voice-bubble[data-key='${key}']`);
+                if (!$realBtn || !$realBtn.length) {
+                    $realBtn = $('.voice-bubble').filter(function () {
+                        return $(this).attr('data-key') === key;
+                    });
+                }
 
                 // 4. 执行调度
                 if ($realBtn && $realBtn.length) {
@@ -388,13 +389,7 @@
 
                 const serverFilename = $btn.attr('data-server-filename');
                 if (!serverFilename) {
-                    // 🔧 更详细的错误提示
-                    console.warn('[TTS] 收藏失败: data-server-filename 缺失', {
-                        key: $btn.data('key'),
-                        audioUrl: $btn.attr('data-audio-url'),
-                        status: $btn.attr('data-status')
-                    });
-                    alert("❌ 无法收藏：未找到源文件名\n\n可能原因:\n1. 这是旧版本生成的音频\n2. 浏览器跨域限制\n\n建议: 点击"重Roll"重新生成后再收藏");
+                    alert("❌ 无法收藏：未找到源文件名（可能是旧缓存）。");
                     return;
                 }
 
