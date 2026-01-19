@@ -36,9 +36,10 @@ class LLMService:
         if max_tokens:
             request_body["max_tokens"] = max_tokens
         
-        for key in ["top_p", "frequency_penalty", "presence_penalty"]:
-            if key in config and config[key] is not None:
-                request_body[key] = config[key]
+        # 暂时注释掉额外参数,避免某些LLM服务器不支持导致502错误
+        # for key in ["top_p", "frequency_penalty", "presence_penalty"]:
+        #     if key in config and config[key] is not None:
+        #         request_body[key] = config[key]
         
         print(f"[LLM] 请求URL: {api_url}")
         print(f"[LLM] 模型: {model}")
@@ -68,8 +69,20 @@ class LLMService:
                 return content
                 
             except httpx.HTTPStatusError as e:
-                error_msg = f"HTTP错误 {e.response.status_code}: {e.response.text[:200]}"
+                error_text = e.response.text
+                error_msg = f"HTTP错误 {e.response.status_code}: {error_text}"
                 print(f"[LLM] ❌ {error_msg}")
+                print(f"[LLM] 完整响应: {error_text}")
+                print(f"[LLM] 响应头: {dict(e.response.headers)}")
+                print(f"[LLM] Content-Type: {e.response.headers.get('content-type', 'N/A')}")
+                print(f"[LLM] 请求URL: {api_url}")
+                print(f"[LLM] 请求体长度: {len(str(request_body))} 字符")
+                
+                # 尝试用curl命令复现
+                import json
+                curl_cmd = f'curl -X POST "{api_url}" -H "Authorization: Bearer {api_key}" -H "Content-Type: application/json" -d \'{json.dumps(request_body, ensure_ascii=False)}\''
+                print(f"[LLM] 等效curl命令: {curl_cmd[:500]}...")
+                
                 raise Exception(error_msg)
             except httpx.RequestError as e:
                 error_msg = f"请求错误: {str(e)}"

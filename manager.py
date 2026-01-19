@@ -45,7 +45,7 @@ app.include_router(data.router, tags=["Data Management"])
 app.include_router(tts.router, tags=["TTS Core"])
 app.include_router(system.router, tags=["System Settings"])
 app.include_router(admin.router, prefix="/api/admin", tags=["Admin Panel"])
-app.include_router(phone_call.router, tags=["Phone Call"])
+app.include_router(phone_call.router, prefix="/api", tags=["Phone Call"])
 
 if __name__ == "__main__":
     # 必须是 0.0.0.0，否则局域网无法访问

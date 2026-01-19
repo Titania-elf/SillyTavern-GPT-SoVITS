@@ -25,7 +25,7 @@
                 body: JSON.stringify(payload)
             });
         },
-
+        //TODO 修改为V2端口
         async checkCache(params) {
             const queryParams = { ...params, check_only: "true" };
             const query = new URLSearchParams(queryParams).toString();
@@ -38,7 +38,7 @@
                 filename: data.filename
             };
         },
-
+        //TODO 修改为V2端口
         async generateAudio(params) {
             const queryParams = { ...params, streaming_mode: "false" };
             const query = new URLSearchParams(queryParams).toString();
