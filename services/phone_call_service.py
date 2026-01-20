@@ -24,30 +24,31 @@ class PhoneCallService:
         self.tts_service = TTSService(get_sovits_host())
         self.audio_merger = AudioMerger()
     
-    async def generate(self, char_name: str, context: List[Dict], generate_audio: bool = True) -> Dict:
+    async def generate(self, chat_branch: str, speakers: List[str], context: List[Dict], generate_audio: bool = True) -> Dict:
         """
         生成主动电话内容
         
         流程:
         1. 加载配置
         2. 提取上下文数据
-        3. 获取可用情绪
-        4. 构建提示词
-        5. 调用LLM
-        6. 解析响应
+        3. 获取所有说话人的可用情绪
+        4. 构建提示词 (包含说话人列表)
+        5. 调用LLM (LLM选择说话人)
+        6. 解析响应 (验证说话人)
         7. (可选)生成音频
         8. (可选)合并音频
         9. 返回结果
         
         Args:
-            char_name: 角色名称
+            chat_branch: 对话分支ID
+            speakers: 说话人列表
             context: 对话上下文
             generate_audio: 是否生成音频(默认True)
             
         Returns:
-            包含segments和audio(可选)的字典
+            包含segments、selected_speaker和audio(可选)的字典
         """
-        print(f"\n[PhoneCallService] 开始生成主动电话: 角色={char_name}, 上下文={len(context)}条消息")
+        print(f"\n[PhoneCallService] 开始生成主动电话: chat_branch={chat_branch}, speakers={speakers}, 上下文={len(context)}条消息")
         
         # 1. 加载配置
         settings = load_json(SETTINGS_FILE)
@@ -63,16 +64,22 @@ class PhoneCallService:
         # 2. 提取上下文数据
         extracted_data = self.data_extractor.extract(context, extractors)
         
-        # 3. 获取可用情绪
-        emotions = self.emotion_service.get_available_emotions(char_name)
+        # 3. 获取所有说话人的可用情绪
+        speakers_emotions = {}
+        for speaker in speakers:
+            emotions = self.emotion_service.get_available_emotions(speaker)
+            speakers_emotions[speaker] = emotions
+            print(f"[PhoneCallService] {speaker} 可用情绪: {emotions}")
         
-        # 4. 构建提示词
+        # 4. 构建提示词 (包含说话人和情绪信息)
         prompt = self.prompt_builder.build(
             template=prompt_template,
-            char_name=char_name,
+            char_name=speakers[0] if speakers else "Unknown",  # 保持兼容性
             context=context,
             extracted_data=extracted_data,
-            emotions=emotions
+            emotions=speakers_emotions.get(speakers[0], []) if speakers else [],
+            speakers=speakers,  # 新增: 传递说话人列表
+            speakers_emotions=speakers_emotions  # 新增: 传递说话人情绪映射
         )
         
         # 5. 调用LLM
@@ -80,22 +87,40 @@ class PhoneCallService:
         llm_response = await self.llm_service.call(llm_config, prompt)
         print(f"[PhoneCallService] LLM响应长度: {len(llm_response)} 字符")
         
-        # 6. 解析响应
+        # 6. 解析响应 (提取说话人和情绪片段)
+        import json
+        
+        # 解析JSON响应
+        response_data = json.loads(llm_response)
+        selected_speaker = response_data.get("speaker")
+        
+        # 验证说话人
+        if not selected_speaker or selected_speaker not in speakers:
+            raise ValueError(f"LLM返回的说话人 '{selected_speaker}' 无效,可用说话人: {speakers}")
+        
+        print(f"[PhoneCallService] LLM选择的说话人: {selected_speaker}")
+        
+        # 获取该说话人的可用情绪
+        available_emotions = speakers_emotions.get(selected_speaker, [])
+        
+        # 解析情绪片段
         segments = self.response_parser.parse_emotion_segments(
-            llm_response, 
+            json.dumps(response_data),
             parser_config,
-            available_emotions=emotions
+            available_emotions=available_emotions
         )
-        print(f"[PhoneCallService] 解析到 {len(segments)} 个情绪片段")
+        
+        print(f"[PhoneCallService] 解析到 {len(segments)} 个情绪片段, 说话人: {selected_speaker}")
         
         result = {
             "segments": [seg.dict() for seg in segments],
-            "total_segments": len(segments)
+            "total_segments": len(segments),
+            "selected_speaker": selected_speaker
         }
         
         # 7-8. 生成并合并音频(如果需要)
-        if generate_audio and segments:
-            print(f"[PhoneCallService] 开始生成音频...")
+        if generate_audio and segments and selected_speaker:
+            print(f"[PhoneCallService] 开始生成音频 (说话人: {selected_speaker})...")
             
             audio_bytes_list = []
             
@@ -106,8 +131,8 @@ class PhoneCallService:
             for i, segment in enumerate(segments):
                 print(f"[PhoneCallService] 生成片段 {i+1}/{len(segments)}: [{segment.emotion}] {segment.text[:30]}...")
                 
-                # 选择参考音频
-                ref_audio = self._select_ref_audio(char_name, segment.emotion)
+                # 选择参考音频 (使用选定的说话人)
+                ref_audio = self._select_ref_audio(selected_speaker, segment.emotion)
                 
                 if not ref_audio:
                     print(f"[PhoneCallService] 警告: 未找到情绪 '{segment.emotion}' 的参考音频,跳过")

@@ -424,7 +424,7 @@ async def message_webhook(req: MessageWebhookRequest):
     当用户发送消息时,SillyTavern 调用此接口,触发自动生成检测
     
     Args:
-        req: 包含角色名、当前楼层和对话上下文
+        req: 包含对话分支、说话人列表、当前楼层和对话上下文
         
     Returns:
         处理结果
@@ -433,12 +433,23 @@ async def message_webhook(req: MessageWebhookRequest):
         from services.conversation_monitor import ConversationMonitor
         from services.auto_call_scheduler import AutoCallScheduler
         
-        print(f"\n[Webhook] 收到消息: {req.char_name} @ 楼层{req.current_floor}")
+        print(f"\n[Webhook] 收到消息: chat_branch={req.chat_branch}, 说话人={req.speakers}, 楼层={req.current_floor}")
+        
+        # 如果没有说话人,跳过
+        if not req.speakers or len(req.speakers) == 0:
+            return {
+                "status": "skipped",
+                "message": "没有可用的说话人"
+            }
+        
+        # 使用第一个说话人作为主要角色 (用于触发检测)
+        # TODO: 未来可以改进为根据上下文选择最相关的说话人
+        primary_speaker = req.speakers[0]
         
         # 检查是否应该触发
         monitor = ConversationMonitor()
         
-        if not monitor.should_trigger(req.char_name, req.current_floor):
+        if not monitor.should_trigger(primary_speaker, req.current_floor):
             return {
                 "status": "skipped",
                 "message": "未达到触发条件"
@@ -448,9 +459,14 @@ async def message_webhook(req: MessageWebhookRequest):
         context = monitor.extract_context(req.context)
         trigger_floor = monitor.get_trigger_floor(req.current_floor)
         
-        # 调度生成任务
+        # 调度生成任务 (传递所有说话人)
         scheduler = AutoCallScheduler()
-        call_id = await scheduler.schedule_auto_call(req.char_name, trigger_floor, context)
+        call_id = await scheduler.schedule_auto_call(
+            chat_branch=req.chat_branch,
+            speakers=req.speakers,
+            trigger_floor=trigger_floor,
+            context=context
+        )
         
         if call_id is None:
             return {
@@ -461,7 +477,7 @@ async def message_webhook(req: MessageWebhookRequest):
         return {
             "status": "scheduled",
             "call_id": call_id,
-            "message": f"已调度自动生成任务: {req.char_name} @ 楼层{trigger_floor}"
+            "message": f"已调度自动生成任务: {req.speakers} @ 楼层{trigger_floor}"
         }
         
     except Exception as e:
