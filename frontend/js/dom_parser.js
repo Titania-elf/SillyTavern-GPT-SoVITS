@@ -1,13 +1,13 @@
-(function () {
+﻿
     const BARS_HTML = `<span class='sovits-voice-waves'><span class='sovits-voice-bar'></span><span class='sovits-voice-bar'></span><span class='sovits-voice-bar'></span></span>`;
 
     // 本地兜底正则
     const FALLBACK_REGEX = /\[TTSVoice\s*:\s*([^:]+)\s*:\s*([^\]]+)\]\s*([^[\n<]+)/gi;
 
-    window.TTS_Parser = {
+    export const TTS_Parser = {
         htmlCache: {},
         init() {
-            console.log("✅ [Parser] DOM 解析器已加载 (Observer 版)");
+            console.log("�?[Parser] DOM 解析器已加载 (Observer �?");
             this.startObserver();
         },
 
@@ -36,8 +36,8 @@
             this._executeScan();
         },
 
-        // 【新增功能】供 Scheduler 调用的状态更新函数
-        // 这里封装了穿透 Iframe 的逻辑，你不需要在外面自己写了
+        // 【新增功能】供 Scheduler 调用的状态更新函�?
+        // 这里封装了穿�?Iframe 的逻辑，你不需要在外面自己写了
         updateState() {
             const CACHE = window.TTS_State.CACHE;
 
@@ -45,7 +45,7 @@
             const _doUpdate = ($container) => {
                 $container.find('.voice-bubble.loading').each(function () {
                     const $btn = $(this);
-                    const key = $btn.attr('data-key'); // 现在这里能取到值了！
+                    const key = $btn.attr('data-key'); // 现在这里能取到值了�?
 
                     if (key && CACHE.audioMemory[key]) {
                         // console.log(`[UI] 气泡就绪: ${key}`);
@@ -60,7 +60,7 @@
                 });
             };
 
-            // 1. 更新主界面
+            // 1. 更新主界�?
             _doUpdate($('body'));
 
             // 2. 更新 Iframe 内部
@@ -121,10 +121,10 @@
                             body.on('contextmenu', '.voice-bubble', function (e) {
                                 e.stopPropagation(); // 阻止内部冒泡
 
-                                // 计算 iframe 在主窗口的绝对位置
+                                // 计算 iframe 在主窗口的绝对位�?
                                 const iframeRect = $iframe[0].getBoundingClientRect();
 
-                                // 构造一个伪事件对象，修正 clientX/Y
+                                // 构造一个伪事件对象，修�?clientX/Y
                                 const fakeEvent = {
                                     preventDefault: () => e.preventDefault(),
                                     clientX: iframeRect.left + e.clientX,
@@ -132,11 +132,11 @@
                                     originalEvent: e.originalEvent
                                 };
 
-                                // 修正触摸事件坐标 (如果有)
+                                // 修正触摸事件坐标 (如果�?
                                 if (e.originalEvent && e.originalEvent.touches && e.originalEvent.touches.length > 0) {
-                                    // 注意：OriginalEvent 的 touches 也是相对于 iframe 的视口的
-                                    // 这里简单处理，假装它是鼠标事件的 clientX/Y 修正
-                                    // 如果非常严格，需要深度克隆 touches 对象，这里暂略
+                                    // 注意：OriginalEvent �?touches 也是相对�?iframe 的视口的
+                                    // 这里简单处理，假装它是鼠标事件�?clientX/Y 修正
+                                    // 如果非常严格，需要深度克�?touches 对象，这里暂�?
                                     fakeEvent.originalEvent = {
                                         touches: [{
                                             clientX: iframeRect.left + e.originalEvent.touches[0].clientX,
@@ -145,7 +145,7 @@
                                     };
                                 }
 
-                                // 直接调用 Events 模块的方法
+                                // 直接调用 Events 模块的方�?
                                 if (window.TTS_Events && window.TTS_Events.handleContextMenu) {
                                     window.TTS_Events.handleContextMenu(fakeEvent, $(this));
                                 }
@@ -191,7 +191,7 @@
                                     const bubbleWidth = Math.min(220, 60 + d * 10);
                                     const prefix = spaceChars || '';
 
-                                    // 【关键修复】这里加了 data-key="${key}"
+                                    // 【关键修复】这里加�?data-key="${key}"
                                     return `${prefix}<span class="voice-bubble ${loadingClass}"
                                     style="width: ${bubbleWidth}px"
                                     data-status="${status}" data-key="${key}" ${dataUrlAttr} data-text="${cleanText}"
@@ -211,7 +211,7 @@
                 });
 
             } else {
-                // ================= 普通模式 =================
+                // ================= 普通模�?=================
                 if (currentCSS && $('#sovits-iframe-style-main').length === 0) {
                     $('head').append(`<style id='sovits-iframe-style-main'>${currentCSS}</style>`);
                 }
@@ -262,4 +262,3 @@
             }
         }
     };
-})();
