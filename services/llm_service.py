@@ -33,6 +33,11 @@ class LLMService:
         if not api_url or not api_key or not model:
             raise ValueError("缺少必要的LLM配置: api_url, api_key, model")
         
+        # 自动添加 /chat/completions 后缀(如果不存在)
+        api_url = api_url.strip()
+        if '/chat/completions' not in api_url:
+            api_url = api_url.rstrip('/') + '/chat/completions'
+        
         request_body = {
             "model": model,
             "messages": [{"role": "user", "content": prompt}],

@@ -783,7 +783,7 @@ export const TTS_Mobile = window.TTS_Mobile;
 
                 // 从配置文件读取默认值
                 let defaultConfig = {
-                    api_url: 'http://127.0.0.1:7861/v1/chat/completions',
+                    api_url: 'http://127.0.0.1:7861/v1',
                     api_key: 'pwd',
                     model: 'gemini-2.5-flash',
                     temperature: 0.8,

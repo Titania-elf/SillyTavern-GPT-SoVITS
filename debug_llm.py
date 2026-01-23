@@ -6,7 +6,7 @@ import httpx
 import json
 
 # 配置 - 从system_settings.json读取
-API_URL = "http://127.0.0.1:7861/v1/chat/completions"
+API_URL = "http://127.0.0.1:7861/v1"
 API_KEY = "pwd"  # 用户配置的密钥
 
 async def test_llm_direct():
@@ -14,7 +14,14 @@ async def test_llm_direct():
     print("="*60)
     print("直接测试本地反代LLM API")
     print("="*60)
-    print(f"API地址: {API_URL}")
+    
+    # 自动添加 /chat/completions 后缀(如果不存在)
+    llm_url = API_URL.strip()
+    if '/chat/completions' not in llm_url:
+        llm_url = llm_url.rstrip('/') + '/chat/completions'
+    
+    print(f"基础API地址: {API_URL}")
+    print(f"完整API地址: {llm_url}")
     print(f"API密钥: {API_KEY}")
     
     # 构建测试请求
@@ -34,7 +41,7 @@ async def test_llm_direct():
         try:
             print(f"\n发送请求...")
             response = await client.post(
-                API_URL,
+                llm_url,
                 headers={
                     "Authorization": f"Bearer {API_KEY}",
                     "Content-Type": "application/json"

@@ -543,7 +543,7 @@ async function loadSettings() {
 
         // LLM 配置
         const llm = settings.phone_call?.llm || {};
-        document.getElementById('setting-llm-api-url').value = llm.api_url || 'http://127.0.0.1:7861/v1/chat/completions';
+        document.getElementById('setting-llm-api-url').value = llm.api_url || 'http://127.0.0.1:7861/v1';
         document.getElementById('setting-llm-api-key').value = llm.api_key || '';
 
         // 处理模型下拉框
@@ -694,6 +694,9 @@ function bindFetchModelsButton() {
             console.log('[管理面板] 开始获取模型列表...', { apiUrl, apiKey: '***' });
             const models = await fetchLLMModels(apiUrl, apiKey);
             console.log('[管理面板] 成功获取模型:', models);
+
+            // 对模型列表进行排序
+            models.sort((a, b) => a.localeCompare(b));
 
             // 清空并重新填充下拉框
             modelSelect.innerHTML = '<option value="">请选择模型...</option>';
