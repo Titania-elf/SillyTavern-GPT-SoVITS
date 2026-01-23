@@ -66,34 +66,67 @@ async function callLLM(config) {
 }
 
 function parseResponse(data) {
+    // 添加详细的调试日志
+    console.log('[LLM_Client] 🔍 开始解析LLM响应');
+    console.log('[LLM_Client] 响应数据类型:', typeof data);
+    console.log('[LLM_Client] 响应是否为对象:', data !== null && typeof data === 'object');
+
+    if (data !== null && typeof data === 'object') {
+        console.log('[LLM_Client] 响应对象的键:', Object.keys(data));
+        console.log('[LLM_Client] 完整响应数据:', JSON.stringify(data, null, 2));
+    } else {
+        console.log('[LLM_Client] 响应数据 (非对象):', data);
+    }
+
     let content = null;
 
     if (data.choices?.[0]?.message?.content) {
         content = data.choices[0].message.content.trim();
+        console.log('[LLM_Client] ✅ 使用 data.choices[0].message.content');
     }
     else if (data.choices?.[0]?.message?.reasoning_content) {
         content = data.choices[0].message.reasoning_content.trim();
+        console.log('[LLM_Client] ✅ 使用 data.choices[0].message.reasoning_content');
     }
     else if (data.choices?.[0]?.text) {
         content = data.choices[0].text.trim();
+        console.log('[LLM_Client] ✅ 使用 data.choices[0].text');
     }
     else if (data.content) {
         content = data.content.trim();
+        console.log('[LLM_Client] ✅ 使用 data.content');
     }
     else if (data.output) {
         content = data.output.trim();
+        console.log('[LLM_Client] ✅ 使用 data.output');
     }
     else if (data.response) {
         content = data.response.trim();
+        console.log('[LLM_Client] ✅ 使用 data.response');
     }
     else if (data.result) {
         content = typeof data.result === 'string' ? data.result.trim() : JSON.stringify(data.result);
+        console.log('[LLM_Client] ✅ 使用 data.result');
     }
 
     if (!content) {
-        throw new Error('无法解析LLM响应 (响应格式不兼容)');
+        console.error('[LLM_Client] ❌ 无法从响应中提取内容');
+        console.error('[LLM_Client] 已尝试的路径:');
+        console.error('  - data.choices[0].message.content');
+        console.error('  - data.choices[0].message.reasoning_content');
+        console.error('  - data.choices[0].text');
+        console.error('  - data.content');
+        console.error('  - data.output');
+        console.error('  - data.response');
+        console.error('  - data.result');
+
+        // 创建错误对象并附加原始响应数据
+        const error = new Error('无法解析LLM响应 (响应格式不兼容)');
+        error.rawResponse = data;  // 附加原始响应数据
+        throw error;
     }
 
+    console.log('[LLM_Client] ✅ 成功解析,内容长度:', content.length);
     return content;
 }
 

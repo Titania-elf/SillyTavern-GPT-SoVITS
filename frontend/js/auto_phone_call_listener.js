@@ -392,6 +392,40 @@ export const AutoPhoneCallListener = {
 
             } catch (error) {
                 console.error('[AutoPhoneCallListener] ❌ 处理失败:', error);
+
+                // 将错误信息发送到后端控制台
+                try {
+                    const apiHost = this.getApiHost();
+                    const errorReport = {
+                        error_type: 'llm_parse_error',
+                        error_message: error.message,
+                        error_stack: error.stack,
+                        call_id: call_id,
+                        char_name: char_name,
+                        llm_config: llm_config,
+                        timestamp: new Date().toISOString()
+                    };
+
+                    // 如果错误对象包含原始响应数据,也一并发送
+                    if (error.rawResponse) {
+                        errorReport.raw_llm_response = error.rawResponse;
+                        console.log('[AutoPhoneCallListener] 📋 包含原始LLM响应数据');
+                    }
+
+                    console.log('[AutoPhoneCallListener] 📤 发送错误报告到后端...');
+
+                    // 异步发送,不阻塞主流程
+                    fetch(`${apiHost}/api/phone_call/log_error`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(errorReport)
+                    }).catch(err => {
+                        console.warn('[AutoPhoneCallListener] ⚠️ 发送错误报告失败:', err);
+                    });
+                } catch (reportError) {
+                    console.warn('[AutoPhoneCallListener] ⚠️ 生成错误报告失败:', reportError);
+                }
+
                 this.showNotification(`生成失败: ${error.message}`, 'error');
             }
             return;

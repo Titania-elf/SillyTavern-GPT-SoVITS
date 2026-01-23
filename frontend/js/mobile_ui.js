@@ -39,51 +39,19 @@ export const TTS_Mobile = window.TTS_Mobile;
                     container.empty();
 
                     const $content = $(`
-                        <div style="width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; 
-                                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color:white;">
+                        <div class="incoming-call-container">
+                            <div class="call-icon">📞</div>
+                            <div class="caller-name">${callData.char_name}</div>
+                            <div class="call-status">来电中...</div>
                             
-                            <div style="font-size:80px; margin-bottom:30px;">📞</div>
-                            <div style="font-size:32px; font-weight:bold; margin-bottom:15px;">${callData.char_name}</div>
-                            <div style="font-size:18px; opacity:0.9; margin-bottom:60px;">来电中...</div>
-                            
-                            <div style="display:flex; gap:40px; justify-content:center;">
-                                <button id="mobile-reject-call-btn" style="
-                                    width:80px; 
-                                    height:80px; 
-                                    border-radius:50%; 
-                                    border:none; 
-                                    background:#ef4444; 
-                                    color:white; 
-                                    font-size:36px; 
-                                    cursor:pointer;
-                                    box-shadow:0 4px 20px rgba(239,68,68,0.5);
-                                    transition:all 0.2s;">
-                                    ✕
-                                </button>
-                                <button id="mobile-answer-call-btn" style="
-                                    width:80px; 
-                                    height:80px; 
-                                    border-radius:50%; 
-                                    border:none; 
-                                    background:#10b981; 
-                                    color:white; 
-                                    font-size:36px; 
-                                    cursor:pointer;
-                                    box-shadow:0 4px 20px rgba(16,185,129,0.5);
-                                    transition:all 0.2s;">
-                                    ✓
-                                </button>
+                            <div class="call-buttons">
+                                <button id="mobile-reject-call-btn" class="call-btn reject-btn">✕</button>
+                                <button id="mobile-answer-call-btn" class="call-btn answer-btn">✓</button>
                             </div>
                         </div>
                     `);
 
                     container.append($content);
-
-                    // 按钮悬停效果
-                    $content.find('button').hover(
-                        function () { $(this).css('transform', 'scale(1.1)'); },
-                        function () { $(this).css('transform', 'scale(1)'); }
-                    );
 
                     // 拒绝来电
                     $content.find('#mobile-reject-call-btn').click(function () {
@@ -99,40 +67,131 @@ export const TTS_Mobile = window.TTS_Mobile;
                     $content.find('#mobile-answer-call-btn').click(function () {
                         console.log('[Mobile] 用户接听来电');
 
+                        // 显示通话中界面
+                        showInCallUI(container, callData);
+                    });
+
+                    return;
+                }
+
+                // ========== 显示通话中界面的函数 ==========
+                function showInCallUI(container, callData) {
+                    container.empty();
+
+                    // 创建通话中界面
+                    const $inCallContent = $(`
+                        <div class="in-call-container">
+                            <div class="call-header">
+                                <div class="call-avatar">👤</div>
+                                <div class="call-name">${callData.char_name}</div>
+                                <div class="call-duration">00:00</div>
+                            </div>
+
+                            <div class="audio-visualizer">
+                                <div class="audio-bar"></div>
+                                <div class="audio-bar"></div>
+                                <div class="audio-bar"></div>
+                                <div class="audio-bar"></div>
+                                <div class="audio-bar"></div>
+                            </div>
+
+                            <div class="audio-progress">
+                                <div class="progress-bar-container">
+                                    <div class="progress-bar-fill" style="width: 0%;"></div>
+                                </div>
+                                <div class="progress-time">
+                                    <span class="current-time">0:00</span>
+                                    <span class="total-time">0:00</span>
+                                </div>
+                            </div>
+
+                            <button id="mobile-hangup-btn" class="hangup-btn">✕</button>
+                        </div>
+                    `);
+
+                    container.append($inCallContent);
+
+                    // 播放音频
+                    if (callData.audio_url) {
+                        // 转换为完整URL
+                        let fullUrl = callData.audio_url;
+                        if (fullUrl && fullUrl.startsWith('/') && window.TTS_API && window.TTS_API.baseUrl) {
+                            fullUrl = window.TTS_API.baseUrl + fullUrl;
+                        }
+
+                        console.log('[Mobile] 完整音频URL:', fullUrl);
+                        const audio = new Audio(fullUrl);
+                        let startTime = Date.now();
+                        let durationInterval = null;
+
+                        // 更新通话时长
+                        durationInterval = setInterval(() => {
+                            const elapsed = Math.floor((Date.now() - startTime) / 1000);
+                            const minutes = Math.floor(elapsed / 60);
+                            const seconds = elapsed % 60;
+                            $inCallContent.find('.call-duration').text(
+                                `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
+                            );
+                        }, 1000);
+
+                        // 音频加载完成
+                        audio.addEventListener('loadedmetadata', function () {
+                            const duration = audio.duration;
+                            const mins = Math.floor(duration / 60);
+                            const secs = Math.floor(duration % 60);
+                            $inCallContent.find('.total-time').text(`${mins}:${secs.toString().padStart(2, '0')}`);
+                        });
+
+                        // 更新进度
+                        audio.addEventListener('timeupdate', function () {
+                            const progress = (audio.currentTime / audio.duration) * 100;
+                            $inCallContent.find('.progress-bar-fill').css('width', progress + '%');
+
+                            const currentMins = Math.floor(audio.currentTime / 60);
+                            const currentSecs = Math.floor(audio.currentTime % 60);
+                            $inCallContent.find('.current-time').text(
+                                `${currentMins}:${currentSecs.toString().padStart(2, '0')}`
+                            );
+                        });
+
                         // 播放音频
-                        if (callData.audio_url) {
-                            // 转换为完整URL
-                            let fullUrl = callData.audio_url;
-                            if (fullUrl && fullUrl.startsWith('/') && window.TTS_API && window.TTS_API.baseUrl) {
-                                fullUrl = window.TTS_API.baseUrl + fullUrl;
-                            }
+                        audio.play().catch(err => {
+                            console.error('[Mobile] 音频播放失败:', err);
+                            alert('音频播放失败: ' + err.message);
+                            clearInterval(durationInterval);
+                            endCall();
+                        });
 
-                            console.log('[Mobile] 完整音频URL:', fullUrl);
-                            const audio = new Audio(fullUrl);
-                            audio.play().catch(err => {
-                                console.error('[Mobile] 音频播放失败:', err);
-                                alert('音频播放失败: ' + err.message);
-                            });
+                        // 音频播放结束
+                        audio.onended = function () {
+                            console.log('[Mobile] 音频播放完成');
+                            clearInterval(durationInterval);
+                            endCall();
+                        };
 
-                            audio.onended = function () {
-                                console.log('[Mobile] 音频播放完成');
-                                delete window.TTS_IncomingCall;
-                                $('#tts-manager-btn').removeClass('incoming-call').attr('title', '🔊 TTS配置');
-                                $('#tts-mobile-trigger').removeClass('incoming-call');
-                                // 返回主屏幕
-                                $('#mobile-home-btn').click();
-                            };
-                        } else {
-                            console.warn('[Mobile] 没有音频 URL');
+                        // 挂断按钮
+                        $inCallContent.find('#mobile-hangup-btn').click(function () {
+                            console.log('[Mobile] 用户挂断电话');
+                            audio.pause();
+                            clearInterval(durationInterval);
+                            endCall();
+                        });
+
+                        function endCall() {
                             delete window.TTS_IncomingCall;
                             $('#tts-manager-btn').removeClass('incoming-call').attr('title', '🔊 TTS配置');
                             $('#tts-mobile-trigger').removeClass('incoming-call');
                             // 返回主屏幕
                             $('#mobile-home-btn').click();
                         }
-                    });
-
-                    return;
+                    } else {
+                        console.warn('[Mobile] 没有音频 URL');
+                        delete window.TTS_IncomingCall;
+                        $('#tts-manager-btn').removeClass('incoming-call').attr('title', '🔊 TTS配置');
+                        $('#tts-mobile-trigger').removeClass('incoming-call');
+                        // 返回主屏幕
+                        $('#mobile-home-btn').click();
+                    }
                 }
 
                 // ========== 状态2: 无来电 - 显示历史记录列表 ==========

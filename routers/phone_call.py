@@ -935,3 +935,66 @@ async def test_trigger_auto_call(req: TestTriggerRequest):
     except Exception as e:
         print(f"[TestTrigger] ❌ 错误: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+class ErrorLogRequest(BaseModel):
+    """前端错误日志请求"""
+    error_type: str
+    error_message: str
+    error_stack: Optional[str] = None
+    call_id: Optional[int] = None
+    char_name: Optional[str] = None
+    llm_config: Optional[Dict] = None
+    raw_llm_response: Optional[Dict] = None  # 原始LLM响应数据
+    timestamp: str
+
+
+@router.post("/phone_call/log_error")
+async def log_error(req: ErrorLogRequest):
+    """
+    接收前端错误日志并输出到后端控制台
+    
+    Args:
+        req: 错误日志信息
+        
+    Returns:
+        确认信息
+    """
+    print(f"\n{'='*80}")
+    print(f"[前端错误报告] {req.timestamp}")
+    print(f"{'='*80}")
+    print(f"错误类型: {req.error_type}")
+    print(f"错误消息: {req.error_message}")
+    
+    if req.call_id:
+        print(f"Call ID: {req.call_id}")
+    
+    if req.char_name:
+        print(f"角色名称: {req.char_name}")
+    
+    if req.llm_config:
+        print(f"\nLLM 配置:")
+        print(f"  - API URL: {req.llm_config.get('api_url', 'N/A')}")
+        print(f"  - Model: {req.llm_config.get('model', 'N/A')}")
+        print(f"  - Temperature: {req.llm_config.get('temperature', 'N/A')}")
+        print(f"  - Max Tokens: {req.llm_config.get('max_tokens', 'N/A')}")
+    
+    if req.raw_llm_response:
+        import json
+        print(f"\n原始 LLM 响应数据:")
+        print(f"  - 数据类型: {type(req.raw_llm_response).__name__}")
+        if isinstance(req.raw_llm_response, dict):
+            print(f"  - 响应键: {list(req.raw_llm_response.keys())}")
+        print(f"\n完整响应 (JSON格式):")
+        print(json.dumps(req.raw_llm_response, indent=2, ensure_ascii=False))
+    
+    if req.error_stack:
+        print(f"\n错误堆栈:")
+        print(req.error_stack)
+    
+    print(f"{'='*80}\n")
+    
+    return {
+        "status": "logged",
+        "message": "错误已记录到后端控制台"
+    }
