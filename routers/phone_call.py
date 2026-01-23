@@ -63,6 +63,7 @@ class MessageWebhookRequest(BaseModel):
     speakers: List[str]  # 说话人列表
     current_floor: int  # 当前对话楼层
     context: List[ContextMessage]  # 完整对话上下文,使用 ContextMessage 模型
+    context_fingerprint: str  # 上下文指纹
 
 
 
@@ -707,13 +708,14 @@ async def message_webhook(req: MessageWebhookRequest):
         context = monitor.extract_context(req.context)
         trigger_floor = monitor.get_trigger_floor(req.current_floor)
         
-        # 调度生成任务 (传递所有说话人)
+        # 调度生成任务 (传递所有说话人和上下文指纹)
         scheduler = AutoCallScheduler()
         call_id = await scheduler.schedule_auto_call(
             chat_branch=req.chat_branch,
             speakers=req.speakers,
             trigger_floor=trigger_floor,
-            context=context
+            context=context,
+            context_fingerprint=req.context_fingerprint
         )
         
         if call_id is None:

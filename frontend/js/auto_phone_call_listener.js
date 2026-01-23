@@ -248,12 +248,27 @@ export const AutoPhoneCallListener = {
         try {
             const apiHost = this.getApiHost();
 
+            // 计算上下文指纹
+            let contextFingerprint = 'empty';
+            try {
+                if (window.TTS_Utils && window.TTS_Utils.getCurrentContextFingerprints) {
+                    const fingerprints = window.TTS_Utils.getCurrentContextFingerprints();
+                    contextFingerprint = this.generateContextFingerprint(fingerprints);
+                    console.log(`[AutoPhoneCallListener] 🔐 上下文指纹: ${contextFingerprint} (基于 ${fingerprints.length} 条消息)`);
+                } else {
+                    console.warn('[AutoPhoneCallListener] ⚠️ TTS_Utils.getCurrentContextFingerprints 不可用,使用默认指纹');
+                }
+            } catch (error) {
+                console.error('[AutoPhoneCallListener] ❌ 计算指纹失败:', error);
+            }
+
             // 构建请求数据
             const requestData = {
                 chat_branch: chatBranch,
                 speakers: speakers,
                 current_floor: floor,
-                context: context
+                context: context,
+                context_fingerprint: contextFingerprint
             };
 
             // 详细日志
@@ -263,6 +278,7 @@ export const AutoPhoneCallListener = {
             console.log('  - speakers:', speakers);
             console.log('  - current_floor:', floor);
             console.log('  - context 条数:', context?.length || 0);
+            console.log('  - context_fingerprint:', contextFingerprint);
             console.log('  - context 示例:', context?.slice(0, 2));
             console.log('  - 完整数据:', requestData);
 
@@ -282,6 +298,34 @@ export const AutoPhoneCallListener = {
         } catch (error) {
             console.error('[AutoPhoneCallListener] ❌ 发送 webhook 时出错:', error);
         }
+    },
+
+    /**
+     * 生成上下文指纹
+     * 将所有消息指纹合并后生成唯一标识
+     */
+    generateContextFingerprint(fingerprints) {
+        if (!fingerprints || fingerprints.length === 0) {
+            return 'empty';
+        }
+
+        // 排序后合并,确保相同内容产生相同指纹
+        const sorted = fingerprints.slice().sort();
+        const combined = sorted.join('|');
+
+        // 使用简单哈希
+        if (window.TTS_Utils && window.TTS_Utils.generateSimpleHash) {
+            return window.TTS_Utils.generateSimpleHash(combined);
+        }
+
+        // 回退:使用简单的字符串哈希
+        let hash = 0;
+        for (let i = 0; i < combined.length; i++) {
+            const char = combined.charCodeAt(i);
+            hash = ((hash << 5) - hash) + char;
+            hash = hash & hash;
+        }
+        return Math.abs(hash).toString(36);
     },
 
     /**

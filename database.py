@@ -48,6 +48,8 @@ class DatabaseManager:
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS auto_phone_calls (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
+                chat_branch TEXT NOT NULL,
+                context_fingerprint TEXT NOT NULL,
                 char_name TEXT,
                 trigger_floor INTEGER NOT NULL,
                 segments TEXT NOT NULL,
@@ -56,7 +58,7 @@ class DatabaseManager:
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 status TEXT DEFAULT 'pending',
                 error_message TEXT,
-                UNIQUE(trigger_floor)
+                UNIQUE(chat_branch, context_fingerprint)
             )
         ''')
         
@@ -68,6 +70,51 @@ class DatabaseManager:
             print("[Database] 迁移: 添加 audio_url 字段到 auto_phone_calls 表")
             cursor.execute("ALTER TABLE auto_phone_calls ADD COLUMN audio_url TEXT")
             conn.commit()
+        
+        # 数据库迁移:添加 chat_branch 和 context_fingerprint 字段
+        try:
+            cursor.execute("SELECT chat_branch FROM auto_phone_calls LIMIT 1")
+        except sqlite3.OperationalError:
+            print("[Database] 迁移: 添加 chat_branch 和 context_fingerprint 字段")
+            cursor.execute("ALTER TABLE auto_phone_calls ADD COLUMN chat_branch TEXT DEFAULT 'legacy'")
+            cursor.execute("ALTER TABLE auto_phone_calls ADD COLUMN context_fingerprint TEXT DEFAULT ''")
+            
+            # 为现有记录生成唯一的指纹(基于trigger_floor)
+            cursor.execute("UPDATE auto_phone_calls SET context_fingerprint = 'legacy_' || trigger_floor WHERE context_fingerprint = ''")
+            
+            # 删除旧的唯一约束并创建新的(SQLite需要重建表)
+            print("[Database] 迁移: 重建表以更新唯一约束")
+            cursor.execute('''
+                CREATE TABLE auto_phone_calls_new (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    chat_branch TEXT NOT NULL,
+                    context_fingerprint TEXT NOT NULL,
+                    char_name TEXT,
+                    trigger_floor INTEGER NOT NULL,
+                    segments TEXT NOT NULL,
+                    audio_path TEXT,
+                    audio_url TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    status TEXT DEFAULT 'pending',
+                    error_message TEXT,
+                    UNIQUE(chat_branch, context_fingerprint)
+                )
+            ''')
+            
+            # 复制数据
+            cursor.execute('''
+                INSERT INTO auto_phone_calls_new 
+                (id, chat_branch, context_fingerprint, char_name, trigger_floor, segments, audio_path, audio_url, created_at, status, error_message)
+                SELECT id, chat_branch, context_fingerprint, char_name, trigger_floor, segments, audio_path, audio_url, created_at, status, error_message
+                FROM auto_phone_calls
+            ''')
+            
+            # 删除旧表,重命名新表
+            cursor.execute("DROP TABLE auto_phone_calls")
+            cursor.execute("ALTER TABLE auto_phone_calls_new RENAME TO auto_phone_calls")
+            
+            conn.commit()
+            print("[Database] 迁移完成: 表结构已更新")
         
         # 创建 conversation_speakers 表 - 对话说话人记录
         cursor.execute('''
@@ -199,13 +246,16 @@ class DatabaseManager:
 
     # ==================== 自动电话生成记录相关方法 ====================
     
-    def add_auto_phone_call(self, trigger_floor: int, segments: List[Dict], 
+    def add_auto_phone_call(self, chat_branch: str, context_fingerprint: str, 
+                           trigger_floor: int, segments: List[Dict], 
                            char_name: Optional[str] = None,
                            audio_path: Optional[str] = None, status: str = "pending") -> Optional[int]:
         """
         添加自动电话生成记录
         
         Args:
+            chat_branch: 对话分支ID
+            context_fingerprint: 上下文指纹
             trigger_floor: 触发楼层
             segments: 情绪片段列表
             char_name: 角色名称(可选,初始为 None,LLM 选择后更新)
@@ -223,9 +273,9 @@ class DatabaseManager:
         try:
             cursor.execute('''
                 INSERT INTO auto_phone_calls (
-                    trigger_floor, char_name, segments, audio_path, status
-                ) VALUES (?, ?, ?, ?, ?)
-            ''', (trigger_floor, char_name, segments_json, audio_path, status))
+                    chat_branch, context_fingerprint, trigger_floor, char_name, segments, audio_path, status
+                ) VALUES (?, ?, ?, ?, ?, ?, ?)
+            ''', (chat_branch, context_fingerprint, trigger_floor, char_name, segments_json, audio_path, status))
             conn.commit()
             return cursor.lastrowid
         except sqlite3.IntegrityError:
@@ -234,12 +284,13 @@ class DatabaseManager:
         finally:
             conn.close()
     
-    def is_auto_call_generated(self, trigger_floor: int) -> bool:
+    def is_auto_call_generated(self, chat_branch: str, context_fingerprint: str) -> bool:
         """
-        检查指定楼层是否已成功生成过自动电话
+        检查指定分支和上下文指纹是否已成功生成过自动电话
         
         Args:
-            trigger_floor: 触发楼层
+            chat_branch: 对话分支ID
+            context_fingerprint: 上下文指纹
             
         Returns:
             True 表示已成功生成, False 表示未生成或生成失败
@@ -251,8 +302,8 @@ class DatabaseManager:
             # 只检查状态为 'completed' 的记录,允许 'failed' 状态的记录重试
             cursor.execute('''
                 SELECT COUNT(*) FROM auto_phone_calls 
-                WHERE trigger_floor = ? AND status = 'completed'
-            ''', (trigger_floor,))
+                WHERE chat_branch = ? AND context_fingerprint = ? AND status = 'completed'
+            ''', (chat_branch, context_fingerprint))
             count = cursor.fetchone()[0]
             return count > 0
         finally:

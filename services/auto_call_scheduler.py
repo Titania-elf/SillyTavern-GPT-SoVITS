@@ -17,7 +17,7 @@ class AutoCallScheduler:
         # 正在执行的任务集合 (char_name, floor)
         self._running_tasks = set()
     
-    async def schedule_auto_call(self, chat_branch: str, speakers: List[str], trigger_floor: int, context: List[Dict]) -> Optional[int]:
+    async def schedule_auto_call(self, chat_branch: str, speakers: List[str], trigger_floor: int, context: List[Dict], context_fingerprint: str) -> Optional[int]:
         """
         调度自动电话生成任务
         
@@ -26,21 +26,22 @@ class AutoCallScheduler:
             speakers: 说话人列表
             trigger_floor: 触发楼层
             context: 对话上下文
+            context_fingerprint: 上下文指纹
             
         Returns:
             任务ID,如果已存在或正在执行则返回 None
         """
-        # 使用楼层作为任务标识
-        task_key = trigger_floor
+        # 使用指纹作为任务标识
+        task_key = f"{chat_branch}#{context_fingerprint}"
         
         # 检查是否正在执行
         if task_key in self._running_tasks:
-            print(f"[AutoCallScheduler] 任务已在执行中: 楼层{trigger_floor}")
+            print(f"[AutoCallScheduler] 任务已在执行中: {chat_branch}#{context_fingerprint[:8]}")
             return None
         
         # 检查数据库是否已生成
-        if self.db.is_auto_call_generated(trigger_floor):
-            print(f"[AutoCallScheduler] 该楼层已生成过: 楼层{trigger_floor}")
+        if self.db.is_auto_call_generated(chat_branch, context_fingerprint):
+            print(f"[AutoCallScheduler] 该上下文已生成过: {chat_branch}#{context_fingerprint[:8]}")
             return None
         
         # 检查是否存在卡住的记录 (generating/pending 状态)
@@ -49,8 +50,8 @@ class AutoCallScheduler:
         cursor = conn.cursor()
         try:
             cursor.execute(
-                "SELECT id, status FROM auto_phone_calls WHERE trigger_floor = ?",
-                (trigger_floor,)
+                "SELECT id, status FROM auto_phone_calls WHERE chat_branch = ? AND context_fingerprint = ?",
+                (chat_branch, context_fingerprint)
             )
             existing = cursor.fetchone()
             
@@ -67,8 +68,10 @@ class AutoCallScheduler:
         finally:
             conn.close()
         
-        # 创建数据库记录(char_name 初始为 None,等 LLM 选择后更新)
+        # 创建数据库记录(使用指纹系统)
         call_id = self.db.add_auto_phone_call(
+            chat_branch=chat_branch,
+            context_fingerprint=context_fingerprint,
             trigger_floor=trigger_floor,
             segments=[],  # 初始为空
             char_name=None,  # 初始为 None,LLM 选择后更新
@@ -76,10 +79,10 @@ class AutoCallScheduler:
         )
         
         if call_id is None:
-            print(f"[AutoCallScheduler] 创建记录失败(可能已存在): 楼层{trigger_floor}")
+            print(f"[AutoCallScheduler] 创建记录失败(可能已存在): {chat_branch}#{context_fingerprint[:8]}")
             return None
         
-        print(f"[AutoCallScheduler] ✅ 创建任务: ID={call_id}, speakers={speakers} @ 楼层{trigger_floor}")
+        print(f"[AutoCallScheduler] ✅ 创建任务: ID={call_id}, speakers={speakers} @ 楼层{trigger_floor}, 指纹={context_fingerprint[:8]}")
         
         # 异步执行生成任务 (传递所有说话人)
         asyncio.create_task(self._execute_generation(call_id, chat_branch, speakers, trigger_floor, context))
