@@ -224,10 +224,16 @@
                         <div
                             style="display:flex; align-items:center; justify-content:space-between; margin-bottom:5px;">
                             <label>LLM 模型</label>
-                            <button type="button" id="fetch-llm-models-btn" class="btn btn-secondary"
-                                style="padding:4px 12px; font-size:12px;">
-                                🔄 获取模型列表
-                            </button>
+                            <div style="display:flex; gap:8px;">
+                                <button type="button" id="test-llm-connection-btn" class="btn btn-secondary"
+                                    style="padding:4px 12px; font-size:12px;">
+                                    🧪 测试连接
+                                </button>
+                                <button type="button" id="fetch-llm-models-btn" class="btn btn-secondary"
+                                    style="padding:4px 12px; font-size:12px;">
+                                    🔄 获取模型列表
+                                </button>
+                            </div>
                         </div>
                         <select id="setting-llm-model" class="select">
                             <option value="">请选择模型...</option>

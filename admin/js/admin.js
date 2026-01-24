@@ -23,6 +23,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 绑定获取 LLM 模型列表按钮
     bindFetchModelsButton();
+    // 绑定测试 LLM 连接按钮
+    bindTestConnectionButton();
 });
 
 function switchPage(pageName) {
@@ -734,6 +736,118 @@ function bindFetchModelsButton() {
         }
     });
 }
+
+// 绑定测试连接按钮
+function bindTestConnectionButton() {
+    const btn = document.getElementById('test-llm-connection-btn');
+    if (!btn) return;
+
+    btn.addEventListener('click', async () => {
+        const apiUrl = document.getElementById('setting-llm-api-url').value.trim();
+        const apiKey = document.getElementById('setting-llm-api-key').value.trim();
+        const model = document.getElementById('setting-llm-model').value.trim();
+        const temperature = parseFloat(document.getElementById('setting-llm-temperature').value) || 0.8;
+
+        if (!apiUrl || !apiKey) {
+            showNotification('请先填写 LLM API 地址和密钥', 'warning');
+            return;
+        }
+
+        if (!model) {
+            showNotification('请先选择或输入模型名称', 'warning');
+            return;
+        }
+
+        // 禁用按钮并显示加载状态
+        btn.disabled = true;
+        btn.textContent = '测试中...';
+
+        try {
+            console.log('[管理面板] 开始测试 LLM 连接...', { apiUrl, model, apiKey: '***' });
+
+            // 调用 LLM
+            const content = await testLLMConnection(apiUrl, apiKey, model, temperature);
+            console.log('[管理面板] LLM 测试成功:', content);
+
+            showNotification(`✅ 连接成功! LLM 响应: "${content.substring(0, 50)}${content.length > 50 ? '...' : ''}"`, 'success');
+        } catch (error) {
+            console.error('[管理面板] LLM 测试失败:', error);
+            showNotification(`❌ 连接失败: ${error.message}`, 'error');
+        } finally {
+            // 恢复按钮状态
+            btn.disabled = false;
+            btn.textContent = '🧪 测试连接';
+        }
+    });
+}
+
+// 测试 LLM 连接
+async function testLLMConnection(apiUrl, apiKey, model, temperature) {
+    // 构建完整的 API URL
+    let llmUrl = apiUrl.trim();
+    if (!llmUrl.includes('/chat/completions')) {
+        llmUrl = llmUrl.replace(/\/$/, '') + '/chat/completions';
+    }
+
+    const requestBody = {
+        model: model,
+        messages: [{ role: "user", content: "你好,请回复'测试成功'" }],
+        temperature: temperature,
+        max_tokens: 50,
+        stream: false
+    };
+
+    const response = await fetch(llmUrl, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${apiKey}`
+        },
+        body: JSON.stringify(requestBody)
+    });
+
+    if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`HTTP ${response.status}: ${errorText.substring(0, 200)}`);
+    }
+
+    const data = await response.json();
+    return parseLLMResponse(data);
+}
+
+// 解析 LLM 响应
+function parseLLMResponse(data) {
+    let content = null;
+
+    if (data.choices?.[0]?.message?.content) {
+        content = data.choices[0].message.content.trim();
+    }
+    else if (data.choices?.[0]?.message?.reasoning_content) {
+        content = data.choices[0].message.reasoning_content.trim();
+    }
+    else if (data.choices?.[0]?.text) {
+        content = data.choices[0].text.trim();
+    }
+    else if (data.content) {
+        content = data.content.trim();
+    }
+    else if (data.output) {
+        content = data.output.trim();
+    }
+    else if (data.response) {
+        content = data.response.trim();
+    }
+    else if (data.result) {
+        content = typeof data.result === 'string' ? data.result.trim() : JSON.stringify(data.result);
+    }
+
+    if (!content) {
+        throw new Error('无法解析LLM响应 (响应格式不兼容)');
+    }
+
+    return content;
+}
+
 
 // ==================== 工具函数 ====================
 function closeDialog(dialogId) {
