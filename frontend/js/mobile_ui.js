@@ -822,7 +822,7 @@ export const TTS_Mobile = window.TTS_Mobile;
             }
         },
         'llm_test': {
-            name: 'LLM测试',
+            // name: 'LLM测试',
             icon: '🤖',
             bg: '#8b5cf6',
             render: async (container) => {
@@ -1055,7 +1055,7 @@ export const TTS_Mobile = window.TTS_Mobile;
             }
         },
         'phone_call': {
-            name: '主动电话',
+            // name: '主动电话',
             icon: '📞',
             bg: '#10b981',
             render: async (container) => {
@@ -1373,6 +1373,7 @@ export const TTS_Mobile = window.TTS_Mobile;
         const $grid = $(`<div class="app-grid"></div>`);
         Object.keys(APPS).forEach(key => {
             const app = APPS[key];
+            if (!app.name) return; // 跳过没有 name 的应用
             const item = `
             <div class="app-icon-wrapper" data-app="${key}">
                 <div class="app-icon" style="background:${app.bg || 'rgba(255,255,255,0.2)'}">
