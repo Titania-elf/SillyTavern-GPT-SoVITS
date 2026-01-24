@@ -1174,7 +1174,7 @@ export const TTS_Mobile = window.TTS_Mobile;
 
                         // 全新流程: 三步走
                         // 步骤1: 调用后端构建提示词
-                        const apiBaseUrl = `${window.location.protocol}//${window.location.hostname}:3000`;
+                        const apiBaseUrl = window.TTS_API.baseUrl;
                         const buildPromptUrl = `${apiBaseUrl}/api/phone_call/build_prompt`;
 
                         console.log('[主动电话] 步骤1: 构建提示词...', buildPromptUrl);
