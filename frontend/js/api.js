@@ -12,9 +12,25 @@ export const TTS_API = {
     },
 
     async getData() {
-        const res = await fetch(this._url('/get_data'));
-        if (!res.ok) throw new Error("API Connection Failed");
-        return await res.json();
+        // 创建 AbortController 用于超时控制
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 秒超时
+
+        try {
+            const res = await fetch(this._url('/get_data'), {
+                signal: controller.signal
+            });
+            clearTimeout(timeoutId);
+
+            if (!res.ok) throw new Error("API Connection Failed");
+            return await res.json();
+        } catch (error) {
+            clearTimeout(timeoutId);
+            if (error.name === 'AbortError') {
+                throw new Error("连接超时 (3秒)");
+            }
+            throw error;
+        }
     },
 
     async updateSettings(payload) {
