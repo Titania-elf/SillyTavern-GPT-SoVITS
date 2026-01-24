@@ -1,5 +1,7 @@
 ﻿from typing import List, Dict
 from datetime import datetime
+from phone_call_utils.context_converter import ContextConverter
+from phone_call_utils.message_filter import MessageFilter
 
 
 class PromptBuilder:
@@ -74,7 +76,9 @@ class PromptBuilder:
         max_context_messages: int = 20,
         speakers: List[str] = None,  # 新增: 说话人列表
         speakers_emotions: Dict[str, List[str]] = None,  # 新增: 说话人情绪映射
-        text_lang: str = "zh"  # 新增: 文本语言配置
+        text_lang: str = "zh",  # 新增: 文本语言配置
+        extract_tag: str = "",  # 新增: 消息提取标签
+        filter_tags: str = ""  # 新增: 消息过滤标签
     ) -> str:
         """
         构建LLM提示词
@@ -89,6 +93,8 @@ class PromptBuilder:
             speakers: 说话人列表
             speakers_emotions: 说话人情绪映射 {说话人: [情绪列表]}
             text_lang: 文本语言配置 (zh/ja/en)
+            extract_tag: 消息提取标签(如 "conxt"),留空则不提取
+            filter_tags: 消息过滤标签(逗号分隔),如 "<small>, [statbar]"
             
         Returns:
             完整提示词
@@ -105,6 +111,9 @@ class PromptBuilder:
         if speakers_emotions is None:
             speakers_emotions = {char_name: emotions} if char_name else {}
         
+        # 转换上下文为标准格式 {role, content}
+        context = ContextConverter.convert_to_standard_format(context)
+        
         # 如果没有提供模板,使用默认 JSON 模板
         if template is None or template == "":
             template = PromptBuilder.DEFAULT_JSON_TEMPLATE
@@ -114,7 +123,11 @@ class PromptBuilder:
         limited_context = context[-max_context_messages:] if len(context) > max_context_messages else context
         
         # 格式化各部分数据
-        formatted_context = PromptBuilder._format_context(limited_context)
+        formatted_context = PromptBuilder._format_context(
+            limited_context, 
+            extract_tag=extract_tag, 
+            filter_tags=filter_tags
+        )
         formatted_data = PromptBuilder._format_extracted_data(extracted_data)
         formatted_emotions = ", ".join(emotions)
         
@@ -174,13 +187,16 @@ class PromptBuilder:
         
         return "\n".join(lines)
     
+    
     @staticmethod
-    def _format_context(context: List[Dict]) -> str:
+    def _format_context(context: List[Dict], extract_tag: str = "", filter_tags: str = "") -> str:
         """
         格式化上下文为文本
         
         Args:
-            context: 对话上下文 (ContextMessage 对象列表)
+            context: 对话上下文,标准格式 [{"role": "user"|"assistant"|"system", "content": "..."}]
+            extract_tag: 消息提取标签
+            filter_tags: 消息过滤标签
             
         Returns:
             格式化的文本
@@ -189,12 +205,28 @@ class PromptBuilder:
             return "暂无对话历史"
         
         lines = []
-        for i, msg in enumerate(context, 1):
-            role = "用户" if msg.is_user else msg.name  # ContextMessage 使用 .is_user 和 .name 属性
-            content = msg.mes  # ContextMessage 使用 .mes 属性
-            lines.append(f"{i}. {role}: {content}")
+        for msg in context:
+            role = msg.get('role', 'unknown')
+            content = msg.get('content', '')
+            
+            # 应用提取和过滤
+            if content:
+                content = MessageFilter.extract_and_filter(content, extract_tag, filter_tags)
+            
+            # 使用英文标签和 emoji
+            if role == 'user':
+                role_display = "👤 User"
+            elif role == 'assistant':
+                role_display = "🤖 Assistant"
+            elif role == 'system':
+                role_display = "⚙️ System"
+            else:
+                role_display = f"❓ {role}"
+            
+            lines.append(f"{role_display}: {content}")
         
-        return "\n".join(lines)
+        # 使用双换行分隔每条消息,使其更清晰
+        return "\n\n".join(lines)
     
     @staticmethod
     def _format_extracted_data(data: Dict) -> str:

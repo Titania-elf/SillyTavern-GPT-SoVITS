@@ -60,6 +60,8 @@ def init_settings():
     if "phone_call" not in settings:
         settings["phone_call"] = {
             "enabled": True,
+            "extract_tag": "",  # 消息提取标签,默认为空(不提取)
+            "filter_tags": "<small>, [statbar]",  # 消息过滤标签,默认过滤常见标签
             "trigger": {
                 "type": "message_count",
                 "threshold": 5
@@ -105,6 +107,15 @@ def init_settings():
                 "notification_method": "websocket"
             }
         }
+        dirty = True
+    
+    # 确保 phone_call 配置包含所有必需字段(向后兼容)
+    phone_call = settings.get("phone_call", {})
+    if "extract_tag" not in phone_call:
+        phone_call["extract_tag"] = ""
+        dirty = True
+    if "filter_tags" not in phone_call:
+        phone_call["filter_tags"] = "<small>, [statbar]"
         dirty = True
 
     if dirty:

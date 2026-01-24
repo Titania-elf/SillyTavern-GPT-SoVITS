@@ -576,6 +576,12 @@ async function loadSettings() {
         document.getElementById('setting-tts-text-split-method').value = tts.text_split_method || 'cut0';
         document.getElementById('setting-tts-use-aux-ref-audio').value = String(tts.use_aux_ref_audio || false);
 
+        // 消息提取和过滤配置
+        const extractTag = settings.phone_call?.extract_tag || '';
+        const filterTags = settings.phone_call?.filter_tags || '';
+        document.getElementById('setting-extract-tag').value = extractTag;
+        document.getElementById('setting-filter-tags').value = filterTags;
+
         // 自动生成配置
         const autoGen = settings.phone_call?.auto_generation || {};
         document.getElementById('setting-auto-floor-interval').value = autoGen.floor_interval || 3;
@@ -594,6 +600,8 @@ async function saveSettings() {
         default_lang: document.getElementById('setting-default-lang').value,
         phone_call: {
             enabled: document.getElementById('setting-phone-call-enabled').value === 'true',
+            extract_tag: document.getElementById('setting-extract-tag').value.trim(),
+            filter_tags: document.getElementById('setting-filter-tags').value.trim(),
             llm: {
                 api_url: document.getElementById('setting-llm-api-url').value.trim(),
                 api_key: document.getElementById('setting-llm-api-key').value.trim(),

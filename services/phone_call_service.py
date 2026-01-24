@@ -67,6 +67,10 @@ class PhoneCallService:
         tts_config = phone_call_config.get("tts_config", {})
         text_lang = tts_config.get("text_lang", "zh")  # 读取语言配置,默认中文
         
+        # 读取消息提取和过滤配置
+        extract_tag = phone_call_config.get("extract_tag", "")  # 提取标签
+        filter_tags = phone_call_config.get("filter_tags", "")  # 过滤标签
+        
         # 2. 提取上下文数据
         extracted_data = self.data_extractor.extract(context, extractors)
         
@@ -86,11 +90,29 @@ class PhoneCallService:
             emotions=speakers_emotions.get(speakers[0], []) if speakers else [],
             speakers=speakers,  # 新增: 传递说话人列表
             speakers_emotions=speakers_emotions,  # 新增: 传递说话人情绪映射
-            text_lang=text_lang  # 新增: 传递语言配置
+            text_lang=text_lang,  # 新增: 传递语言配置
+            extract_tag=extract_tag,  # 新增: 传递提取标签
+            filter_tags=filter_tags  # 新增: 传递过滤标签
         )
         
         print(f"[PhoneCallService] ✅ Prompt构建完成: {len(prompt)} 字符")
         print(f"[PhoneCallService] ⚠️ 不再调用LLM - 请前端使用 LLM_Client.callLLM()")
+        
+        # 打印完整的 LLM 请求体 (JSON 格式,方便测试)
+        import json
+        llm_request_body = {
+            "model": llm_config.get("model"),
+            "messages": [{"role": "user", "content": prompt}],
+            "temperature": llm_config.get("temperature", 0.8),
+            "max_tokens": llm_config.get("max_tokens"),
+            "stream": False
+        }
+        
+        print(f"\n{'='*80}")
+        print(f"[PhoneCallService] 完整 LLM 请求体 (JSON 格式):")
+        print(f"{'='*80}")
+        print(json.dumps(llm_request_body, indent=2, ensure_ascii=False))
+        print(f"{'='*80}\n")
         
         # 返回prompt和配置,供前端调用LLM
         return {

@@ -1,5 +1,6 @@
 import re
 from typing import List, Dict
+from phone_call_utils.context_converter import ContextConverter
 
 
 class DataExtractor:
@@ -11,7 +12,7 @@ class DataExtractor:
         使用配置的提取器从上下文中提取数据
         
         Args:
-            context: 对话上下文列表 [{role, content}, ...]
+            context: 对话上下文列表,标准格式 [{"role": "user"|"assistant"|"system", "content": "..."}, ...]
             extractors: 提取器配置列表
                 每个提取器包含:
                 - name: 提取器名称
@@ -24,6 +25,9 @@ class DataExtractor:
         Returns:
             提取结果字典 {extractor_name: [matched_values]}
         """
+        # 转换上下文为标准格式 {role, content}
+        context = ContextConverter.convert_to_standard_format(context)
+        
         results = {}
         
         for extractor in extractors:
@@ -45,7 +49,7 @@ class DataExtractor:
             
             # 提取数据
             for msg in filtered_messages:
-                content = msg.mes  # ContextMessage 使用 .mes 属性
+                content = msg.get('content', '')  # 使用标准的 'content' 字段
                 matches = re.findall(pattern, content)
                 results[name].extend(matches)
             
@@ -67,15 +71,15 @@ class DataExtractor:
         按scope过滤消息
         
         Args:
-            context: 对话上下文 (ContextMessage 对象列表)
+            context: 对话上下文,标准格式 [{"role": "user"|"assistant"|"system", "content": "..."}]
             scope: 过滤范围 ("character_only" | "user_only" | "all")
             
         Returns:
             过滤后的消息列表
         """
         if scope == "character_only":
-            return [msg for msg in context if not msg.is_user]  # ContextMessage 使用 .is_user 属性
+            return [msg for msg in context if msg.get('role') == 'assistant']
         elif scope == "user_only":
-            return [msg for msg in context if msg.is_user]
+            return [msg for msg in context if msg.get('role') == 'user']
         else:
             return context

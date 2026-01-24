@@ -246,6 +246,25 @@
                     <h3 style="margin-top: 2rem; margin-bottom: 1rem; color: #00d9ff;">🎙️ TTS 配置</h3>
 
                     <div class="form-group">
+                        <label>消息提取标签</label>
+                        <input type="text" id="setting-extract-tag" class="input" placeholder="例: conxt">
+                        <small>提取特定标签内的内容(如 &lt;conxt&gt;...&lt;/conxt&gt;),留空则不提取</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label>消息过滤标签</label>
+                        <textarea id="setting-filter-tags" class="input" rows="3"
+                            placeholder="例: <small>, [statbar], <thought target=|</thought>"></textarea>
+                        <small>
+                            过滤 chat 消息中的标签内容,支持三种格式:<br>
+                            1. &lt;xxx&gt; - 过滤 HTML 风格标签<br>
+                            2. [xxx] - 过滤方括号风格标签<br>
+                            3. 前缀|后缀 - 过滤自定义前后缀包裹的内容<br>
+                            多个标签用逗号分隔
+                        </small>
+                    </div>
+
+                    <div class="form-group">
                         <label>文本语言</label>
                         <select id="setting-tts-text-lang" class="select">
                             <option value="zh">中文 (zh)</option>
