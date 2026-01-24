@@ -22,7 +22,6 @@ import { LLM_Client } from './frontend/js/llm_client.js';
 import { TTS_Mobile } from './frontend/js/mobile_ui.js';
 import { WebSocketManager } from './frontend/js/websocket_manager.js';
 import { AutoPhoneCallListener } from './frontend/js/auto_phone_call_listener.js';
-import { TTS_AutoCallTester } from './frontend/js/auto_call_tester.js';
 
 // ================= 1. 配置区域 =================
 const lsConfig = localStorage.getItem('tts_plugin_remote_config');
@@ -62,7 +61,6 @@ window.TTS_Scheduler = TTS_Scheduler;
 window.TTS_Events = TTS_Events;
 window.TTS_Templates = TTS_Templates;
 window.LLM_Client = LLM_Client;  // 暴露 LLM_Client 供 mobile_ui.js 使用
-window.TTS_AutoCallTester = TTS_AutoCallTester;  // 暴露测试工具供控制台使用
 // 不要覆盖整个 window.TTS_UI,只添加 Templates
 // ui_main.js 的 IIFE 已经初始化了 window.TTS_UI.CTX
 if (!window.TTS_UI.Templates) {
@@ -192,12 +190,14 @@ function initPlugin() {
                 Scheduler.scanAndSchedule();
             }
         } catch (e) {
-            console.error("TTS Backend Error:", e);
+            console.error("🔴 [TTS Backend Error]:", e);
+            console.log("🔴 [Debug] 准备弹出救援配置界面...");
             TTS_Utils.showNotification("❌ 未检测到 TTS 后端服务", "error");
             $('#tts-manager-btn').css({ 'border-color': '#ff5252', 'color': '#ff5252' }).text('⚠️ TTS断开');
 
-            // 弹出救援配置界面
+            console.log("🔴 [Debug] 调用 showEmergencyConfig, MANAGER_API =", MANAGER_API);
             showEmergencyConfig(MANAGER_API);
+            console.log("🔴 [Debug] showEmergencyConfig 调用完成");
         }
     }
 
