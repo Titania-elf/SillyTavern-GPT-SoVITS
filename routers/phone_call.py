@@ -612,8 +612,23 @@ def _select_ref_audio(char_name: str, emotion: str) -> Optional[Dict]:
     
     model_folder = mappings[char_name]
     base_dir, _ = get_current_dirs()
-    # 直接使用 reference_audios 目录,不添加子目录
-    ref_dir = os.path.join(base_dir, model_folder, "reference_audios","Chinese", "emotions")
+    
+    # 从 tts_config.prompt_lang 读取语言设置并转换为目录名
+    settings = load_json(SETTINGS_FILE)
+    prompt_lang = settings.get("phone_call", {}).get("tts_config", {}).get("prompt_lang", "zh")
+    
+    # 语言代码转目录名映射
+    lang_map = {
+        "zh": "Chinese",
+        "en": "English", 
+        "ja": "Japanese",
+        "all_zh": "Chinese",
+        "all_ja": "Japanese"
+    }
+    lang_dir = lang_map.get(prompt_lang, "Chinese")
+    
+    # 使用配置的语言目录
+    ref_dir = os.path.join(base_dir, model_folder, "reference_audios", lang_dir, "emotions")
     
     if not os.path.exists(ref_dir):
         print(f"[_select_ref_audio] 错误: 参考音频目录不存在: {ref_dir}")
