@@ -79,6 +79,7 @@ class MessageWebhookRequest(BaseModel):
     current_floor: int  # 当前对话楼层
     context: List[ContextMessage]  # 完整对话上下文,使用 ContextMessage 模型
     context_fingerprint: str  # 上下文指纹
+    user_name: Optional[str] = None  # 用户名，用于在prompt中区分用户身份
 
 
 
@@ -783,7 +784,8 @@ async def message_webhook(req: MessageWebhookRequest):
             speakers=req.speakers,
             trigger_floor=trigger_floor,
             context=context,
-            context_fingerprint=req.context_fingerprint
+            context_fingerprint=req.context_fingerprint,
+            user_name=req.user_name  # 传递用户名
         )
         
         if call_id is None:

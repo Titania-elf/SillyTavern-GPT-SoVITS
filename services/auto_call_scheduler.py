@@ -17,7 +17,7 @@ class AutoCallScheduler:
         # 正在执行的任务集合 (char_name, floor)
         self._running_tasks = set()
     
-    async def schedule_auto_call(self, chat_branch: str, speakers: List[str], trigger_floor: int, context: List[Dict], context_fingerprint: str) -> Optional[int]:
+    async def schedule_auto_call(self, chat_branch: str, speakers: List[str], trigger_floor: int, context: List[Dict], context_fingerprint: str, user_name: str = None) -> Optional[int]:
         """
         调度自动电话生成任务
         
@@ -27,6 +27,7 @@ class AutoCallScheduler:
             trigger_floor: 触发楼层
             context: 对话上下文
             context_fingerprint: 上下文指纹
+            user_name: 用户名，用于在prompt中区分用户身份
             
         Returns:
             任务ID,如果已存在或正在执行则返回 None
@@ -84,12 +85,12 @@ class AutoCallScheduler:
         
         print(f"[AutoCallScheduler] ✅ 创建任务: ID={call_id}, speakers={speakers} @ 楼层{trigger_floor}, 指纹={context_fingerprint[:8]}")
         
-        # 异步执行生成任务 (传递所有说话人)
-        asyncio.create_task(self._execute_generation(call_id, chat_branch, speakers, trigger_floor, context))
+        # 异步执行生成任务 (传递所有说话人和用户名)
+        asyncio.create_task(self._execute_generation(call_id, chat_branch, speakers, trigger_floor, context, user_name))
         
         return call_id
     
-    async def _execute_generation(self, call_id: int, chat_branch: str, speakers: List[str], trigger_floor: int, context: List[Dict]):
+    async def _execute_generation(self, call_id: int, chat_branch: str, speakers: List[str], trigger_floor: int, context: List[Dict], user_name: str = None):
         """
         执行生成任务(异步) - 新架构
         
@@ -105,6 +106,7 @@ class AutoCallScheduler:
             speakers: 说话人列表
             trigger_floor: 触发楼层
             context: 对话上下文
+            user_name: 用户名，用于在prompt中区分用户身份
         """
         task_key = trigger_floor
         self._running_tasks.add(task_key)
@@ -120,7 +122,8 @@ class AutoCallScheduler:
                 chat_branch=chat_branch,
                 speakers=speakers,
                 context=context,
-                generate_audio=False  # 暂时不生成音频
+                generate_audio=False,  # 暂时不生成音频
+                user_name=user_name  # 传递用户名
             )
             
             prompt = result.get("prompt")

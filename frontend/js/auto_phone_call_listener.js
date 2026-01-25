@@ -248,6 +248,11 @@ export const AutoPhoneCallListener = {
         try {
             const apiHost = this.getApiHost();
 
+            // 获取用户名 (name1)
+            const stContext = window.SillyTavern.getContext();
+            const userName = stContext?.name1 || null;
+            console.log('[AutoPhoneCallListener] 👤 用户名:', userName);
+
             // 计算上下文指纹
             let contextFingerprint = 'empty';
             try {
@@ -268,7 +273,8 @@ export const AutoPhoneCallListener = {
                 speakers: speakers,
                 current_floor: floor,
                 context: context,
-                context_fingerprint: contextFingerprint
+                context_fingerprint: contextFingerprint,
+                user_name: userName  // 用户名，用于在prompt中区分用户身份
             };
 
             // 详细日志
@@ -388,7 +394,7 @@ export const AutoPhoneCallListener = {
                 const result = await response.json();
                 console.log('[AutoPhoneCallListener] ✅ 生成完成:', result);
 
-                this.showNotification(`${result.selected_speaker} 的主动电话已生成!`, 'success');
+                // this.showNotification(`${result.selected_speaker} 的主动电话已生成!`, 'success');
 
             } catch (error) {
                 console.error('[AutoPhoneCallListener] ❌ 处理失败:', error);

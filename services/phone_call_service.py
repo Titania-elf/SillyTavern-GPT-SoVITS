@@ -24,7 +24,7 @@ class PhoneCallService:
         self.tts_service = TTSService(get_sovits_host())
         self.audio_merger = AudioMerger()
     
-    async def generate(self, chat_branch: str, speakers: List[str], context: List[Dict], generate_audio: bool = True) -> Dict:
+    async def generate(self, chat_branch: str, speakers: List[str], context: List[Dict], generate_audio: bool = True, user_name: str = None) -> Dict:
         """
         生成主动电话内容
         
@@ -51,6 +51,7 @@ class PhoneCallService:
             speakers: 说话人列表
             context: 对话上下文
             generate_audio: 是否生成音频(默认True)
+            user_name: 用户名，用于在prompt中区分用户身份
             
         Returns:
             包含prompt、llm_config的字典 (不包含segments,需要前端调用LLM后再处理)
@@ -92,7 +93,8 @@ class PhoneCallService:
             speakers_emotions=speakers_emotions,  # 新增: 传递说话人情绪映射
             text_lang=text_lang,  # 新增: 传递语言配置
             extract_tag=extract_tag,  # 新增: 传递提取标签
-            filter_tags=filter_tags  # 新增: 传递过滤标签
+            filter_tags=filter_tags,  # 新增: 传递过滤标签
+            user_name=user_name  # 新增: 传递用户名
         )
         
         print(f"[PhoneCallService] ✅ Prompt构建完成: {len(prompt)} 字符")
