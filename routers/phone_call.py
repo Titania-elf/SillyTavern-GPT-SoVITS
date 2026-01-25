@@ -44,6 +44,7 @@ class BuildPromptRequest(BaseModel):
     """构建提示词请求"""
     char_name: str
     context: List[Dict[str, str]]
+    user_name: Optional[str] = None  # 用户名，用于在prompt中区分用户身份
 
 
 class ParseAndGenerateRequest(BaseModel):
@@ -123,7 +124,8 @@ async def build_prompt(req: BuildPromptRequest):
             context=req.context,
             extracted_data=extracted_data,
             emotions=emotions,
-            text_lang=text_lang  # 传递语言配置
+            text_lang=text_lang,  # 传递语言配置
+            user_name=req.user_name  # 传递用户名
         )
         
         print(f"[BuildPrompt] ✅ 提示词构建完成: {len(prompt)} 字符")

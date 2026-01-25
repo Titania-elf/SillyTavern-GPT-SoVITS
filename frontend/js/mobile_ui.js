@@ -34,13 +34,34 @@ export const TTS_Mobile = window.TTS_Mobile;
             render: async (container) => {
                 const callData = window.TTS_IncomingCall;
 
+                // 获取角色头像 URL
+                function getCharacterAvatarUrl() {
+                    try {
+                        if (window.SillyTavern && window.SillyTavern.getContext) {
+                            const ctx = window.SillyTavern.getContext();
+                            const char = ctx.characters[ctx.characterId];
+                            if (char && char.avatar) {
+                                return ctx.getThumbnailUrl('avatar', char.avatar);
+                            }
+                        }
+                    } catch (e) {
+                        console.warn('[Mobile] 获取角色头像失败:', e);
+                    }
+                    return null;
+                }
+
+                const avatarUrl = getCharacterAvatarUrl();
+                const avatarHtml = avatarUrl
+                    ? `<img src="${avatarUrl}" alt="avatar">`
+                    : '📞';
+
                 // ========== 状态1: 有来电 - 显示接听/拒绝界面 ==========
                 if (callData) {
                     container.empty();
 
                     const $content = $(`
                         <div class="incoming-call-container">
-                            <div class="call-icon">📞</div>
+                            <div class="call-icon">${avatarHtml}</div>
                             <div class="caller-name">${callData.char_name}</div>
                             <div class="call-status">来电中...</div>
                             
@@ -91,11 +112,17 @@ export const TTS_Mobile = window.TTS_Mobile;
                         `;
                     }).join('');
 
+                    // 获取头像（复用外层函数）
+                    const inCallAvatarUrl = getCharacterAvatarUrl();
+                    const inCallAvatarHtml = inCallAvatarUrl
+                        ? `<img src="${inCallAvatarUrl}" alt="avatar">`
+                        : '👤';
+
                     // 创建通话中界面
                     const $inCallContent = $(`
                         <div class="in-call-container">
                             <div class="call-header">
-                                <div class="call-avatar">👤</div>
+                                <div class="call-avatar">${inCallAvatarHtml}</div>
                                 <div class="call-name">${callData.char_name}</div>
                                 <div class="call-duration">00:00</div>
                             </div>
@@ -1180,12 +1207,18 @@ export const TTS_Mobile = window.TTS_Mobile;
                         console.log('[主动电话] 步骤1: 构建提示词...', buildPromptUrl);
                         $resultContent.html('<div style="text-align:center; padding:20px; color:#666;">正在构建提示词...</div>');
 
+                        // 获取用户名 (name1)
+                        const ctx = window.SillyTavern.getContext();
+                        const userName = ctx.name1 || null;
+                        console.log('[主动电话] 用户名:', userName);
+
                         const buildResponse = await fetch(buildPromptUrl, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({
                                 char_name: charName,
-                                context: context
+                                context: context,
+                                user_name: userName  // 传递用户名
                             })
                         });
 
