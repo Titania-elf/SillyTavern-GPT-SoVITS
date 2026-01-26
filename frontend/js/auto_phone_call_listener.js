@@ -248,10 +248,12 @@ export const AutoPhoneCallListener = {
         try {
             const apiHost = this.getApiHost();
 
-            // 获取用户名 (name1)
+            // 获取用户名 (name1) 和主角色名 (name2)
             const stContext = window.SillyTavern.getContext();
             const userName = stContext?.name1 || null;
+            const charName = stContext?.name2 || null;  // 主角色卡名称，用于 WebSocket 路由
             console.log('[AutoPhoneCallListener] 👤 用户名:', userName);
+            console.log('[AutoPhoneCallListener] 🎭 主角色名:', charName);
 
             // 计算上下文指纹
             let contextFingerprint = 'empty';
@@ -274,7 +276,8 @@ export const AutoPhoneCallListener = {
                 current_floor: floor,
                 context: context,
                 context_fingerprint: contextFingerprint,
-                user_name: userName  // 用户名，用于在prompt中区分用户身份
+                user_name: userName,  // 用户名，用于在prompt中区分用户身份
+                char_name: charName   // 主角色卡名称，用于 WebSocket 路由
             };
 
             // 详细日志

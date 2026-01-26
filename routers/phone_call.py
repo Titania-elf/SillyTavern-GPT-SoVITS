@@ -80,6 +80,7 @@ class MessageWebhookRequest(BaseModel):
     context: List[ContextMessage]  # 完整对话上下文,使用 ContextMessage 模型
     context_fingerprint: str  # 上下文指纹
     user_name: Optional[str] = None  # 用户名，用于在prompt中区分用户身份
+    char_name: Optional[str] = None  # 主角色卡名称，用于 WebSocket 推送路由
 
 
 
@@ -785,7 +786,8 @@ async def message_webhook(req: MessageWebhookRequest):
             trigger_floor=trigger_floor,
             context=context,
             context_fingerprint=req.context_fingerprint,
-            user_name=req.user_name  # 传递用户名
+            user_name=req.user_name,  # 传递用户名
+            char_name=req.char_name   # 传递主角色卡名称，用于 WebSocket 推送
         )
         
         if call_id is None:
