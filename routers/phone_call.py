@@ -804,16 +804,32 @@ async def message_webhook(req: MessageWebhookRequest):
         context = monitor.extract_context(req.context)
         trigger_floor = monitor.get_trigger_floor(req.current_floor)
         
+        # ==================== 查询通话历史 ====================
+        from database import DatabaseManager
+        db = DatabaseManager()
+        
+        # 获取近期通话历史（用于判断是否重复触发）
+        call_history = []
+        if req.context_fingerprint:
+            # 使用指纹查询
+            call_history = db.get_auto_call_history_by_fingerprints(
+                fingerprints=[req.context_fingerprint],
+                limit=5
+            )
+            if call_history:
+                print(f"[Webhook] 📞 检测到 {len(call_history)} 条通话历史记录")
+        
         # ==================== 场景分析 (LLM 版) ====================
         analyzer = SceneAnalyzer()
         print(f"[Webhook] 🔍 构建场景分析请求...")
         
-        # 构建场景分析 prompt
+        # 构建场景分析 prompt（传入通话历史）
         analysis_data = await analyzer.analyze(
             context=context,
             speakers=req.speakers,
             char_name=primary_speaker,
-            user_name=req.user_name
+            user_name=req.user_name,
+            call_history=call_history
         )
         
         # 生成唯一请求 ID

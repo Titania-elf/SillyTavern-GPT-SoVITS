@@ -21,7 +21,8 @@ class SceneAnalyzer:
         context: List[Dict],
         speakers: List[str],
         max_context_messages: int = 10,
-        user_name: str = None
+        user_name: str = None,
+        call_history: List[Dict] = None
     ) -> Dict:
         """
         构建场景分析 Prompt
@@ -31,18 +32,22 @@ class SceneAnalyzer:
             speakers: 可用角色列表
             max_context_messages: 最大上下文消息数
             user_name: 用户名称
+            call_history: 近期通话历史记录
             
         Returns:
             包含 prompt、llm_config 的字典
         """
         print(f"[SceneAnalyzer] 构建场景分析 Prompt: {len(context)}条上下文, {len(speakers)}个角色")
+        if call_history:
+            print(f"[SceneAnalyzer] 检测到 {len(call_history)} 条通话历史记录")
         
         # 构建场景分析 Prompt
         prompt = self.prompt_builder.build_scene_analysis_prompt(
             context=context,
             speakers=speakers,
             max_context_messages=max_context_messages,
-            user_name=user_name
+            user_name=user_name,
+            call_history=call_history
         )
         
         # 读取 LLM 配置
@@ -69,7 +74,8 @@ class SceneAnalyzer:
         speakers: List[str],
         max_context_messages: int = 10,
         char_name: str = None,
-        user_name: str = None
+        user_name: str = None,
+        call_history: List[Dict] = None
     ) -> Dict:
         """
         构建场景分析请求（异步版）
@@ -83,18 +89,22 @@ class SceneAnalyzer:
             max_context_messages: 用于分析的最大上下文消息数
             char_name: 主角色名称
             user_name: 用户名称
+            call_history: 近期通话历史记录
             
         Returns:
             包含 prompt、llm_config 的字典，供 NotificationService 使用
         """
         print(f"[SceneAnalyzer] 构建场景分析请求: {len(context)}条上下文, {len(speakers)}个角色")
+        if call_history:
+            print(f"[SceneAnalyzer] 检测到 {len(call_history)} 条通话历史记录")
         
         # 构建场景分析 Prompt
         prompt = self.prompt_builder.build_scene_analysis_prompt(
             context=context,
             speakers=speakers,
             max_context_messages=max_context_messages,
-            user_name=user_name
+            user_name=user_name,
+            call_history=call_history
         )
         
         # 读取 LLM 配置

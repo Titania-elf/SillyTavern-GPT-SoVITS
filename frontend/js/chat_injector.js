@@ -108,14 +108,21 @@ export const ChatInjector = {
             return `**${speaker}**${emotion}: "${text}"`;
         }).join('\n\n');
 
-        // 组装完整消息
-        let message = `*📞 ${callerName} 给 ${userName} 打了一个电话*\n\n`;
+        // 组装可折叠的消息，防止剧透
+        let sceneDesc = sceneDescription ? `\n*${sceneDescription}*` : '';
 
-        if (sceneDescription) {
-            message += `*${sceneDescription}*\n\n`;
-        }
+        const message = `<details>
+<summary>📞 <strong>${callerName}</strong> 给 <strong>${userName}</strong> 打了一个电话 <em>(点击展开)</em></summary>
+${sceneDesc}
 
-        message += `---\n\n${dialogueContent}\n\n---\n\n*通话结束*`;
+---
+
+${dialogueContent}
+
+---
+
+*通话结束*
+</details>`;
 
         return message;
     },
@@ -135,14 +142,21 @@ export const ChatInjector = {
             return `**${speaker}**${emotion}: "${text}"`;
         }).join('\n\n');
 
-        // 组装完整消息
-        let message = `*🎧 ${speakersText} 正在私下交谈*\n\n`;
+        // 组装可折叠的消息，防止剧透
+        let sceneDesc = sceneDescription ? `\n*${sceneDescription}*` : '';
 
-        if (sceneDescription) {
-            message += `*${sceneDescription}*\n\n`;
-        }
+        const message = `<details>
+<summary>🎧 <strong>${speakersText}</strong> 正在私下交谈 <em>(点击展开)</em></summary>
+${sceneDesc}
 
-        message += `---\n\n${dialogueContent}\n\n---\n\n*对话结束*`;
+---
+
+${dialogueContent}
+
+---
+
+*对话结束*
+</details>`;
 
         return message;
     }

@@ -23,10 +23,14 @@ class PromptBuilder:
 **当前角色列表**:
 {{speakers}}
 
+**该角色近期通话记录**:
+{{call_history}}
+
 **分析任务**:
 1. 识别当前**在场的角色**（正在对话或被提及在场的）
 2. 识别是否有角色**刚刚离开**（离场、告别、走了）
 3. 判断是否可能存在**私下对话**（多个角色在场，可能在私聊）
+4. 如果有通话记录，判断是否有**强烈的再次打电话意图**
 
 **输出格式 (严格 JSON)**:
 ```json
@@ -40,7 +44,10 @@ class PromptBuilder:
 ```
 
 **判断规则**:
-- 如果有角色刚离开 → suggested_action: "phone_call"
+- 如果有角色刚离开 → 检查是否已有近期通话:
+  - 无通话记录 → suggested_action: "phone_call"  
+  - 有通话记录且无强烈意图 → suggested_action: "none" (避免重复)
+  - 有通话记录但有强烈意图（非常想念、有急事、明确表示想打电话等） → suggested_action: "phone_call"
 - 如果 2+ 角色在场且可能私聊 → suggested_action: "eavesdrop"
 - 其他情况 → suggested_action: "none"
 - character_left: 离场角色名，如果没有则为 null"""
@@ -99,10 +106,14 @@ class PromptBuilder:
 **Conversation History:**
 {{context}}
 
+**上次通话摘要** (如果有):
+{{last_call_summary}}
+
 **Your Task:**
 1. Analyze the conversation context
 2. Determine which speaker should make the phone call
 3. Generate appropriate phone call content with emotional segments
+{{followup_call_instructions}}
 
 **IMPORTANT**: Respond ONLY with valid JSON in this exact format:
 
@@ -142,6 +153,16 @@ class PromptBuilder:
 **Generate 10-15 segments** that sound natural and emotionally expressive.
 **Remember**: Use NATURAL phrases. When changing speed dramatically, add a neutral-speed transition segment."""
     
+    # 二次电话专用指令
+    FOLLOWUP_CALL_INSTRUCTIONS = """
+**重要：这是一次二次/后续来电**
+- 请让角色回忆起上次通话的内容
+- 开场要体现出这是再次联系（如"刚才挂掉电话后我又想了想..."、"不好意思又打给你..."、"还是忍不住想再跟你说..."）
+- 解释为什么再次打电话（有新想法、担心的事、忘记说的话、想念等）
+- 情绪和话题可以与上次通话有延续性
+- 不要简单重复上次通话的内容，要有新的内容或情感发展
+"""
+    
     @staticmethod
     def build(
         template: str = None,  # 如果为 None,使用默认模板
@@ -155,7 +176,8 @@ class PromptBuilder:
         text_lang: str = "zh",  # 新增: 文本语言配置
         extract_tag: str = "",  # 新增: 消息提取标签
         filter_tags: str = "",  # 新增: 消息过滤标签
-        user_name: str = None  # 新增: 用户名，用于区分用户身份
+        user_name: str = None,  # 新增: 用户名，用于区分用户身份
+        last_call_info: Dict = None  # 新增: 上次通话信息，用于二次电话
     ) -> str:
         """
         构建LLM提示词
@@ -172,6 +194,7 @@ class PromptBuilder:
             text_lang: 文本语言配置 (zh/ja/en)
             extract_tag: 消息提取标签(如 "conxt"),留空则不提取
             filter_tags: 消息过滤标签(逗号分隔),如 "<small>, [statbar]"
+            last_call_info: 上次通话信息，用于二次电话差异化
             
         Returns:
             完整提示词
@@ -223,6 +246,14 @@ class PromptBuilder:
         lang_name = lang_info["name"]
         lang_display = lang_info["display"]
         
+        # 处理上次通话摘要和二次电话指令
+        last_call_summary = "无上次通话记录"
+        followup_call_instructions = ""
+        if last_call_info:
+            last_call_summary = PromptBuilder._format_last_call_summary(last_call_info)
+            followup_call_instructions = PromptBuilder.FOLLOWUP_CALL_INSTRUCTIONS
+            print(f"[PromptBuilder] 检测到上次通话，添加二次电话指令")
+        
         # 替换模板变量
         prompt = template
         prompt = prompt.replace("{{char_name}}", char_name)
@@ -241,9 +272,51 @@ class PromptBuilder:
         prompt = prompt.replace("{{lang_name}}", lang_name)
         prompt = prompt.replace("{{lang_display}}", lang_display)
         
+        # 新增: 替换上次通话和二次电话相关变量
+        prompt = prompt.replace("{{last_call_summary}}", last_call_summary)
+        prompt = prompt.replace("{{followup_call_instructions}}", followup_call_instructions)
+        
         print(f"[PromptBuilder] 构建提示词: {len(prompt)} 字符, {message_count} 条消息, {len(speakers)} 个说话人")
         
         return prompt
+    
+    @staticmethod
+    def _format_last_call_summary(last_call_info: Dict) -> str:
+        """
+        格式化上次通话摘要
+        
+        Args:
+            last_call_info: 上次通话信息
+            
+        Returns:
+            格式化的摘要字符串
+        """
+        if not last_call_info:
+            return "无上次通话记录"
+        
+        speaker = last_call_info.get("char_name", "未知")
+        created_at = last_call_info.get("created_at", "未知时间")
+        
+        # 提取通话内容
+        segments = last_call_info.get("segments", [])
+        if isinstance(segments, str):
+            import json
+            try:
+                segments = json.loads(segments)
+            except:
+                segments = []
+        
+        # 提取所有片段的内容
+        content_parts = []
+        for seg in segments:
+            if isinstance(seg, dict):
+                text = seg.get("translation") or seg.get("text", "")
+                if text:
+                    content_parts.append(text)
+        
+        content = " ".join(content_parts) if content_parts else "无内容"
+        
+        return f"上次由 {speaker} 打来电话，时间: {created_at}\n内容摘要: {content[:200]}..."
     
     @staticmethod
     def _format_speakers_emotions(speakers: List[str], speakers_emotions: Dict[str, List[str]], user_name: str = None) -> str:
@@ -368,7 +441,8 @@ class PromptBuilder:
         context: List[Dict],
         speakers: List[str],
         max_context_messages: int = 10,
-        user_name: str = None
+        user_name: str = None,
+        call_history: List[Dict] = None
     ) -> str:
         """
         构建场景分析 Prompt
@@ -378,6 +452,7 @@ class PromptBuilder:
             speakers: 可用角色列表
             max_context_messages: 最大上下文消息数
             user_name: 用户名称
+            call_history: 近期通话历史记录
             
         Returns:
             格式化的场景分析 Prompt
@@ -388,12 +463,56 @@ class PromptBuilder:
         # 格式化上下文
         context_text = PromptBuilder._format_context(limited_context, user_name=user_name)
         
+        # 格式化通话历史
+        call_history_text = PromptBuilder._format_call_history(call_history)
+        
         # 构建 prompt
         prompt = PromptBuilder.SCENE_ANALYSIS_TEMPLATE
         prompt = prompt.replace("{{context}}", context_text)
         prompt = prompt.replace("{{speakers}}", ", ".join(speakers))
+        prompt = prompt.replace("{{call_history}}", call_history_text)
         
         return prompt
+    
+    @staticmethod
+    def _format_call_history(call_history: List[Dict]) -> str:
+        """
+        格式化通话历史为可读文本
+        
+        Args:
+            call_history: 通话历史记录列表
+            
+        Returns:
+            格式化的字符串
+        """
+        if not call_history:
+            return "无近期通话记录"
+        
+        lines = []
+        for i, call in enumerate(call_history[:3], 1):  # 最多显示3条
+            speaker = call.get("char_name", "未知")
+            created_at = call.get("created_at", "未知时间")
+            
+            # 提取通话摘要（从 segments 中获取前几句）
+            segments = call.get("segments", [])
+            if isinstance(segments, str):
+                import json
+                try:
+                    segments = json.loads(segments)
+                except:
+                    segments = []
+            
+            summary_parts = []
+            for seg in segments:
+                if isinstance(seg, dict):
+                    text = seg.get("translation") or seg.get("text", "")
+                    if text:
+                        summary_parts.append(text)
+            
+            summary = "..." + "...".join(summary_parts) + "..." if summary_parts else "无内容"
+            lines.append(f"- 第{i}次通话 ({speaker}): {summary}")
+        
+        return "\n".join(lines)
     
     @staticmethod
     def build_eavesdrop_prompt(
