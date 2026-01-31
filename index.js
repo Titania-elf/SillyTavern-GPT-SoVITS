@@ -21,7 +21,7 @@ import './frontend/js/ui_dashboard.js';  // 导入 ui_dashboard.js 以加载事�
 import { LLM_Client } from './frontend/js/llm_client.js';
 import { TTS_Mobile } from './frontend/js/mobile_ui.js';
 import { WebSocketManager } from './frontend/js/websocket_manager.js';
-import { AutoPhoneCallListener } from './frontend/js/auto_phone_call_listener.js';
+import { ChatEventListener } from './frontend/js/chat_event_listener.js';
 
 // ================= 1. 配置区域 =================
 const lsConfig = localStorage.getItem('tts_plugin_remote_config');
@@ -405,13 +405,13 @@ if (TTS_Mobile && TTS_Mobile.init) {
     TTS_Mobile.init();
 }
 
-// 初始化自动电话功能 (延迟 2 秒,确保 SillyTavern 完全加载)
+// 初始化聊天事件监听器 (延迟 2 秒,确保 SillyTavern 完全加载)
 setTimeout(() => {
-    if (AutoPhoneCallListener && AutoPhoneCallListener.init) {
-        console.log("📞 [Loader] 开始初始化自动电话监听器...");
-        AutoPhoneCallListener.init();
+    if (ChatEventListener && ChatEventListener.init) {
+        console.log("📞 [Loader] 开始初始化聊天事件监听器...");
+        ChatEventListener.init();
     } else {
-        console.warn("⚠️ [Loader] AutoPhoneCallListener 模块未找到");
+        console.warn("⚠️ [Loader] ChatEventListener 模块未找到");
     }
 }, 2000);
 
