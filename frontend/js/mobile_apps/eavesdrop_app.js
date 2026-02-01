@@ -47,9 +47,9 @@ export async function render(container, createNavbar) {
         $content.find('#eavesdrop-listen-btn').click(async function () {
             console.log('[Eavesdrop] 用户开始监听');
 
-            // 注入对话追踪内容到聊天
+            // 注入对话追踪内容到聊天（追加到最后一条AI消息，不新增楼层）
             try {
-                await ChatInjector.injectAsMessage({
+                await ChatInjector.appendToLastAIMessage({
                     type: 'eavesdrop',
                     segments: eavesdropData.segments || [],
                     speakers: eavesdropData.speakers || [],
@@ -57,7 +57,7 @@ export async function render(container, createNavbar) {
                     audioUrl: eavesdropData.audio_url,
                     sceneDescription: eavesdropData.scene_description
                 });
-                console.log('[Eavesdrop] ✅ 对话追踪内容已注入聊天');
+                console.log('[Eavesdrop] ✅ 对话追踪内容已追加到聊天');
             } catch (error) {
                 console.error('[Eavesdrop] ❌ 注入聊天失败:', error);
             }

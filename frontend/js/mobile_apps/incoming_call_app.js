@@ -50,16 +50,16 @@ export async function render(container, createNavbar) {
         $content.find('#mobile-answer-call-btn').click(async function () {
             console.log('[Mobile] 用户接听来电');
 
-            // 注入通话内容到聊天
+            // 注入通话内容到聊天（追加到最后一条AI消息，不新增楼层）
             try {
-                await ChatInjector.injectAsMessage({
+                await ChatInjector.appendToLastAIMessage({
                     type: 'phone_call',
                     segments: callData.segments || [],
                     callerName: callData.char_name,
                     callId: callData.call_id,
                     audioUrl: callData.audio_url
                 });
-                console.log('[Mobile] ✅ 通话内容已注入聊天');
+                console.log('[Mobile] ✅ 通话内容已追加到聊天');
             } catch (error) {
                 console.error('[Mobile] ❌ 注入聊天失败:', error);
             }

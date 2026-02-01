@@ -159,6 +159,144 @@ ${dialogueContent}
 </details>`;
 
         return message;
+    },
+
+    /**
+     * 将通话/窃听内容追加到最后一条 AI 消息中（不新增楼层）
+     * 这样不会影响依赖楼层的触发逻辑，同时 LLM 下次对话能读到电话内容
+     * 
+     * @param {Object} options - 配置选项（同 injectAsMessage）
+     * @returns {Promise<boolean>} 是否成功追加
+     */
+    async appendToLastAIMessage(options) {
+        const context = window.SillyTavern?.getContext?.();
+        if (!context) {
+            console.error('[ChatInjector] ❌ 无法获取 SillyTavern 上下文');
+            return false;
+        }
+
+        const { streamingProcessor, eventSource, eventTypes } = context;
+
+        // 检测是否正在生成中
+        const isGenerating = streamingProcessor?.isProcessing || streamingProcessor?.isFinished === false;
+
+        if (isGenerating) {
+            console.log('[ChatInjector] ⏳ 检测到正在生成中，等待生成完成后追加...');
+            // 等待生成结束后再追加
+            return new Promise((resolve) => {
+                const handler = async () => {
+                    eventSource.removeListener(eventTypes.GENERATION_ENDED, handler);
+                    // 稍微延迟一下，确保消息已完全写入
+                    await new Promise(r => setTimeout(r, 100));
+                    const result = await this._doAppend(options);
+                    resolve(result);
+                };
+                eventSource.on(eventTypes.GENERATION_ENDED, handler);
+            });
+        } else {
+            return this._doAppend(options);
+        }
+    },
+
+    /**
+     * 执行追加操作
+     * @private
+     */
+    async _doAppend(options) {
+        const {
+            segments = [],
+            type = 'phone_call',
+            callerName = '',
+            speakers = [],
+            sceneDescription = ''
+        } = options;
+
+        if (!segments || segments.length === 0) {
+            console.warn('[ChatInjector] ⚠️ 没有可追加的对话片段');
+            return false;
+        }
+
+        try {
+            const context = window.SillyTavern?.getContext?.();
+            if (!context) {
+                console.error('[ChatInjector] ❌ 无法获取 SillyTavern 上下文');
+                return false;
+            }
+
+            const { chat, updateMessageBlock, name1 } = context;
+            const saveChat = context.saveChat;
+            const userName = name1 || '用户';
+
+            // 找到最后一条 AI 消息的索引
+            const lastAIIndex = this._findLastAIMessageIndex(chat);
+            if (lastAIIndex === -1) {
+                console.warn('[ChatInjector] ⚠️ 未找到可追加的 AI 消息，回退到创建新消息');
+                return this.injectAsMessage(options);
+            }
+
+            // 格式化电话/窃听内容
+            let appendContent = '';
+            if (type === 'phone_call') {
+                appendContent = this._formatPhoneCallMessage(callerName, userName, segments, sceneDescription);
+            } else if (type === 'eavesdrop') {
+                appendContent = this._formatEavesdropMessage(speakers, segments, sceneDescription);
+            }
+
+            // 追加到消息末尾
+            const targetMessage = chat[lastAIIndex];
+            targetMessage.mes += '\n\n' + appendContent;
+
+            // 如果消息有 extra 字段，添加追加记录
+            if (!targetMessage.extra) {
+                targetMessage.extra = {};
+            }
+            if (!targetMessage.extra.appended_content) {
+                targetMessage.extra.appended_content = [];
+            }
+            targetMessage.extra.appended_content.push({
+                type: type,
+                timestamp: Date.now(),
+                speakers: type === 'eavesdrop' ? speakers : [callerName]
+            });
+
+            console.log(`[ChatInjector] 📝 追加内容到消息 #${lastAIIndex}:`, appendContent.substring(0, 100) + '...');
+
+            // 刷新 DOM 显示
+            if (updateMessageBlock) {
+                updateMessageBlock(lastAIIndex, targetMessage);
+            }
+
+            // 保存聊天记录
+            if (saveChat) {
+                await saveChat();
+            }
+
+            console.log('[ChatInjector] ✅ 内容已成功追加到最后一条 AI 消息');
+            return true;
+
+        } catch (error) {
+            console.error('[ChatInjector] ❌ 追加失败:', error);
+            return false;
+        }
+    },
+
+    /**
+     * 查找最后一条 AI 消息的索引
+     * @private
+     * @param {Array} chat - 聊天记录数组
+     * @returns {number} 消息索引，未找到返回 -1
+     */
+    _findLastAIMessageIndex(chat) {
+        if (!chat || chat.length === 0) {
+            return -1;
+        }
+        // 从后往前找第一条非用户消息
+        for (let i = chat.length - 1; i >= 0; i--) {
+            if (!chat[i].is_user && chat[i].mes) {
+                return i;
+            }
+        }
+        return -1;
     }
 };
 
