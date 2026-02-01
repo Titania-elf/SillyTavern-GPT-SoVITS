@@ -679,18 +679,28 @@ class DatabaseManager:
     
     def update_eavesdrop_status(self, record_id: int, status: str,
                                  audio_path: str = None, audio_url: str = None,
+                                 segments: List[Dict] = None,
                                  error_message: str = None):
         """更新对话追踪记录状态"""
         conn = self._get_connection()
         cursor = conn.cursor()
         
         try:
-            if audio_path:
-                cursor.execute('''
-                    UPDATE eavesdrop_records 
-                    SET status = ?, audio_path = ?, audio_url = ?, error_message = ?
-                    WHERE id = ?
-                ''', (status, audio_path, audio_url, error_message, record_id))
+            if audio_path or segments:
+                # 需要更新音频路径或 segments
+                segments_json = json.dumps(segments, ensure_ascii=False) if segments else None
+                if segments_json:
+                    cursor.execute('''
+                        UPDATE eavesdrop_records 
+                        SET status = ?, audio_path = ?, audio_url = ?, segments = ?, error_message = ?
+                        WHERE id = ?
+                    ''', (status, audio_path, audio_url, segments_json, error_message, record_id))
+                else:
+                    cursor.execute('''
+                        UPDATE eavesdrop_records 
+                        SET status = ?, audio_path = ?, audio_url = ?, error_message = ?
+                        WHERE id = ?
+                    ''', (status, audio_path, audio_url, error_message, record_id))
             else:
                 cursor.execute('''
                     UPDATE eavesdrop_records 

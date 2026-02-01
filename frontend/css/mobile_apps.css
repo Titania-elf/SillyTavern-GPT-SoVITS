@@ -921,6 +921,33 @@
     box-shadow: 0 6px 20px rgba(239, 68, 68, 0.5);
 }
 
+/* 监听播放界面按钮容器 */
+.listening-playback-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    margin-top: 10px;
+}
+
+/* 监听下载按钮 */
+.listening-download-btn {
+    padding: 15px 30px;
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
+    color: white;
+    border: none;
+    border-radius: 25px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
+    transition: all 0.2s;
+}
+
+.listening-download-btn:hover {
+    transform: scale(1.05);
+    box-shadow: 0 6px 20px rgba(59, 130, 246, 0.5);
+}
+
 /* 历史记录列表 */
 .eavesdrop-history-content {
     padding: 15px;

@@ -126,7 +126,8 @@ async def complete_eavesdrop_generation(req: CompleteEavesdropRequest):
             record_id=record_id,
             status="completed",
             audio_path=result.get("audio_path"),
-            audio_url=result.get("audio_url")
+            audio_url=result.get("audio_url"),
+            segments=result.get("segments", [])
         )
         
         print(f"[Eavesdrop API] ✅ 生成完成: record_id={record_id}")

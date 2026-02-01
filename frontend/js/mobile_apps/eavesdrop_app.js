@@ -115,7 +115,7 @@ export async function render(container, createNavbar) {
         }
 
         // 渲染历史记录列表
-        renderHistoryList($content, result.records);
+        renderHistoryList($content, result.records, container, createNavbar);
 
     } catch (error) {
         console.error('[Eavesdrop] 获取历史记录失败:', error);
@@ -130,12 +130,12 @@ export async function render(container, createNavbar) {
 
 /**
  * 渲染历史记录列表
+ * @param {jQuery} $content - 内容容器
+ * @param {Array} records - 历史记录数组
+ * @param {jQuery} container - App 容器（用于全屏导航）
+ * @param {Function} createNavbar - 创建导航栏函数
  */
-function renderHistoryList($content, records) {
-    // 全局音频管理器
-    let currentAudio = null;
-    let currentRecordId = null;
-
+function renderHistoryList($content, records, container, createNavbar) {
     const historyHtml = records.map(record => {
         const date = record.created_at ? new Date(record.created_at).toLocaleString('zh-CN') : '未知时间';
         const speakers = record.speakers?.join(' & ') || '未知角色';
@@ -147,12 +147,15 @@ function renderHistoryList($content, records) {
                 </div>
                 <div class="eavesdrop-history-date">📅 ${date}</div>
                 ${record.audio_url ? `
-                    <div class="play-area">
-                        <div class="eavesdrop-history-play-area">
-                            <span class="eavesdrop-history-play-icon">🎵</span>
-                            <span class="eavesdrop-history-play-text">点击重听</span>
-                            <span class="eavesdrop-history-play-arrow">→</span>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <div class="play-area" style="flex:1;">
+                            <div class="eavesdrop-history-play-area">
+                                <span class="eavesdrop-history-play-icon">🎵</span>
+                                <span class="eavesdrop-history-play-text">点击重听</span>
+                                <span class="eavesdrop-history-play-arrow">→</span>
+                            </div>
                         </div>
+                        <button class="eavesdrop-history-download-btn" style="background:transparent; border:none; color:#3b82f6; font-size:20px; padding:5px; cursor:pointer;">📥</button>
                     </div>
                 ` : ''}
             </div>
@@ -161,8 +164,13 @@ function renderHistoryList($content, records) {
 
     $content.html(historyHtml);
 
-    // 绑定点击事件
-    $content.find('.eavesdrop-history-item').click(function () {
+    // 绑定点击事件 - 全屏播放
+    $content.find('.eavesdrop-history-item').click(function (e) {
+        // 如果点击的是下载按钮,不触发播放
+        if ($(e.target).closest('.eavesdrop-history-download-btn').length > 0) {
+            return;
+        }
+
         const recordId = $(this).data('record-id');
         const record = records.find(r => r.id === recordId);
 
@@ -171,112 +179,175 @@ function renderHistoryList($content, records) {
             return;
         }
 
-        // 如果点击的是正在播放的项,则停止播放
-        if (currentRecordId === recordId && currentAudio) {
-            currentAudio.pause();
-            currentAudio = null;
-            currentRecordId = null;
-            updatePlayUI($(this), 'stopped');
+        console.log('[Eavesdrop] 播放历史记录(全屏):', record);
+
+        // 进入全屏播放界面
+        showHistoryPlaybackUI(container, record, createNavbar);
+    });
+
+    // 绑定下载按钮点击事件
+    $content.find('.eavesdrop-history-download-btn').click(async function (e) {
+        e.stopPropagation();
+
+        const $item = $(this).closest('.eavesdrop-history-item');
+        const recordId = $item.data('record-id');
+        const record = records.find(r => r.id === recordId);
+
+        if (!record || !record.audio_url) {
+            alert('该记录没有音频文件');
             return;
         }
 
-        // 停止当前正在播放的音频
-        if (currentAudio) {
-            currentAudio.pause();
-            $content.find(`.eavesdrop-history-item[data-record-id="${currentRecordId}"]`).each(function () {
-                updatePlayUI($(this), 'stopped');
-            });
-        }
+        await downloadAudio(record);
+    });
+}
 
-        // 转换为完整URL
-        let fullUrl = record.audio_url;
-        const apiHost = getApiHost();
-        if (fullUrl && fullUrl.startsWith('/')) {
-            fullUrl = apiHost + fullUrl;
-        }
+/**
+ * 显示历史记录播放界面
+ * @param {jQuery} container - App 容器
+ * @param {Object} record - 历史记录数据
+ * @param {Function} createNavbar - 创建导航栏函数
+ */
+function showHistoryPlaybackUI(container, record, createNavbar) {
+    container.empty();
 
-        const $item = $(this);
-        const audio = new Audio(fullUrl);
-        currentAudio = audio;
-        currentRecordId = recordId;
+    // 添加导航栏(带返回按钮)
+    const $navbar = createNavbar("播放对话追踪");
+    container.append($navbar);
 
-        updatePlayUI($item, 'loading');
-
-        audio.addEventListener('loadedmetadata', () => {
-            updatePlayUI($item, 'playing', audio.duration);
-        });
-
-        audio.addEventListener('timeupdate', () => {
-            const progress = (audio.currentTime / audio.duration) * 100;
-            updateProgress($item, progress, audio.currentTime);
-        });
-
-        audio.addEventListener('ended', () => {
-            currentAudio = null;
-            currentRecordId = null;
-            updatePlayUI($item, 'stopped');
-        });
-
-        audio.play().catch(err => {
-            console.error('[Eavesdrop] 播放失败:', err);
-            alert('音频播放失败: ' + err.message);
-            currentAudio = null;
-            currentRecordId = null;
-            updatePlayUI($item, 'stopped');
-        });
+    // 监听返回按钮点击 - 停止音频播放
+    $navbar.find('.nav-left').off('click').on('click', function () {
+        console.log('[Eavesdrop] 用户点击返回,停止音频播放');
+        cleanupGlobalPlayer();
+        $('#mobile-home-btn').click();
     });
 
-    // 悬停效果已通过 CSS 处理
+    const speakersText = record.speakers?.join(' & ') || '私聊';
 
-    // 更新播放UI
-    function updatePlayUI($item, status, duration = 0) {
-        const $playArea = $item.find('.play-area');
+    // 创建播放界面
+    const $playbackContent = $(`
+        <div class="listening-container">
+            <div class="listening-header">
+                <div class="listening-avatar">🎧</div>
+                <div class="listening-title">${speakersText}</div>
+                <div class="listening-duration">00:00</div>
+            </div>
 
-        if (status === 'loading') {
-            $playArea.html(`
-                <div class="eavesdrop-play-loading">⏳ 加载中...</div>
-            `);
-        } else if (status === 'playing') {
-            const durationText = formatTime(duration);
-            $playArea.html(`
-                <div class="eavesdrop-play-active">
-                    <div class="eavesdrop-play-header">
-                        <span class="eavesdrop-play-status">🎵 监听中</span>
-                        <button class="eavesdrop-stop-btn">⏹ 停止</button>
-                    </div>
-                    <div class="eavesdrop-progress-bar">
-                        <div class="eavesdrop-progress-fill"></div>
-                    </div>
-                    <div class="eavesdrop-time-display">
-                        <span class="current-time">0:00</span>
-                        <span class="total-time">${durationText}</span>
-                    </div>
+            <!-- 音频可视化 -->
+            <div class="audio-visualizer listening-visualizer">
+                <div class="audio-bar"></div>
+                <div class="audio-bar"></div>
+                <div class="audio-bar"></div>
+                <div class="audio-bar"></div>
+                <div class="audio-bar"></div>
+            </div>
+
+            <!-- 字幕区域 - 多说话人支持 -->
+            <div class="listening-subtitle-area">
+                <div class="subtitle-speaker"></div>
+                <div class="subtitle-line">
+                    <span class="subtitle-text"></span>
                 </div>
-            `);
+            </div>
 
-            $playArea.find('.eavesdrop-stop-btn').click(function (e) {
-                e.stopPropagation();
-                if (currentAudio) {
-                    currentAudio.pause();
-                    currentAudio = null;
-                    currentRecordId = null;
-                    updatePlayUI($item, 'stopped');
-                }
-            });
-        } else if (status === 'stopped') {
-            $playArea.html(`
-                <div class="eavesdrop-history-play-area">
-                    <span class="eavesdrop-history-play-icon">🎵</span>
-                    <span class="eavesdrop-history-play-text">点击重听</span>
-                    <span class="eavesdrop-history-play-arrow">→</span>
+            <div class="audio-progress">
+                <div class="progress-bar-container">
+                    <div class="progress-bar-fill" style="width: 0%;"></div>
                 </div>
-            `);
+                <div class="progress-time">
+                    <span class="current-time">0:00</span>
+                    <span class="total-time">0:00</span>
+                </div>
+            </div>
+
+            <div class="listening-playback-buttons">
+                <button id="listening-stop-btn" class="listening-stop-btn">⏹ 停止监听</button>
+                <button id="listening-download-btn" class="listening-download-btn">📥 下载</button>
+            </div>
+        </div>
+    `);
+
+    container.append($playbackContent);
+
+    // 使用共享音频播放器
+    const player = new AudioPlayer({
+        $container: $playbackContent,
+        segments: record.segments || [],
+        showSpeaker: true, // eavesdrop 显示说话人
+        onEnd: () => {
+            console.log('[Eavesdrop] 历史播放完成');
+            endPlayback();
+        },
+        onError: (err) => {
+            console.error('[Eavesdrop] 历史播放错误:', err);
+            alert('音频播放失败');
+            endPlayback();
         }
+    });
+
+    // 设置为全局播放器
+    setGlobalPlayer(player);
+
+    // 停止按钮
+    $playbackContent.find('#listening-stop-btn').click(function () {
+        console.log('[Eavesdrop] 用户停止播放');
+        player.stop();
+        endPlayback();
+    });
+
+    // 下载按钮
+    $playbackContent.find('#listening-download-btn').click(async function () {
+        await downloadAudio(record);
+    });
+
+    // 开始播放
+    if (record.audio_url) {
+        player.play(record.audio_url);
+    } else {
+        console.warn('[Eavesdrop] 历史记录没有音频 URL');
+        alert('该记录没有音频文件');
+        endPlayback();
     }
 
-    function updateProgress($item, progress, currentTime) {
-        $item.find('.eavesdrop-progress-fill').css('width', progress + '%');
-        $item.find('.current-time').text(formatTime(currentTime));
+    function endPlayback() {
+        cleanupGlobalPlayer();
+        render(container, createNavbar);
+    }
+}
+
+/**
+ * 下载音频
+ */
+async function downloadAudio(record) {
+    console.log('[Eavesdrop] 用户点击下载对话追踪音频');
+
+    let fullUrl = record.audio_url;
+    const apiHost = getApiHost();
+    if (fullUrl && fullUrl.startsWith('/')) {
+        fullUrl = apiHost + fullUrl;
+    }
+
+    const speakers = record.speakers?.join(' & ') || '对话追踪';
+    const text = record.segments && record.segments.length > 0
+        ? record.segments.map(seg => seg.translation || seg.text || '').join(' ')
+        : '历史对话';
+
+    console.log('📥 下载对话追踪音频');
+    console.log('  - audioUrl:', fullUrl);
+    console.log('  - speakers:', speakers);
+    console.log('  - text:', text);
+
+    // 使用 TTS_Events.downloadAudio 下载
+    if (window.TTS_Events && window.TTS_Events.downloadAudio) {
+        try {
+            await window.TTS_Events.downloadAudio(fullUrl, speakers, text);
+            console.log('✅ 下载请求已发送');
+        } catch (err) {
+            console.error('❌ 下载失败:', err);
+            alert('下载失败: ' + err.message);
+        }
+    } else {
+        alert('下载功能未就绪,请刷新页面');
     }
 }
 
