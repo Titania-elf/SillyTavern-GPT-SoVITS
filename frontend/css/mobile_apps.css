@@ -895,12 +895,20 @@
 .listening-subtitle-area {
     width: 100%;
     max-width: 320px;
-    min-height: 80px;
+    max-height: 100px;
+    min-height: 60px;
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
-    margin-bottom: 20px;
+    justify-content: flex-start;
+    margin-bottom: 15px;
+    overflow-y: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+.listening-subtitle-area::-webkit-scrollbar {
+    display: none;
 }
 
 .listening-stop-btn {

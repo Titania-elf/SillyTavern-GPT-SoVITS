@@ -75,6 +75,7 @@ export class SubtitleRenderer {
      */
     _updateCharHighlight(totalChars, charProgress) {
         const activeCharIndex = Math.floor(charProgress * totalChars);
+        let $activeChar = null;
 
         this.$subtitleText.find('.subtitle-char').each(function (index) {
             const $char = $(this);
@@ -84,8 +85,42 @@ export class SubtitleRenderer {
                 $char.addClass('passed');
             } else if (index === activeCharIndex) {
                 $char.addClass('active');
+                $activeChar = $char;
             }
         });
+
+        // 自动滚动到当前高亮字符
+        if ($activeChar && $activeChar.length) {
+            this._scrollToActiveChar($activeChar[0]);
+        }
+    }
+
+    /**
+     * 滚动到当前高亮字符
+     * @private
+     */
+    _scrollToActiveChar(charElement) {
+        // $container 本身就是滚动容器 (.call-subtitle-area 或 .listening-subtitle-area)
+        const scrollContainer = this.$container[0];
+        if (!scrollContainer || !charElement) return;
+
+        // 计算字符相对于滚动容器的位置
+        const containerRect = scrollContainer.getBoundingClientRect();
+        const charRect = charElement.getBoundingClientRect();
+
+        // 如果字符在容器可视区域外，滚动到字符位置
+        const charTop = charRect.top - containerRect.top + scrollContainer.scrollTop;
+        const charBottom = charTop + charRect.height;
+        const visibleTop = scrollContainer.scrollTop;
+        const visibleBottom = visibleTop + scrollContainer.clientHeight;
+
+        if (charTop < visibleTop || charBottom > visibleBottom) {
+            // 平滑滚动到字符位置（居中显示）
+            scrollContainer.scrollTo({
+                top: charTop - (scrollContainer.clientHeight / 2) + (charRect.height / 2),
+                behavior: 'smooth'
+            });
+        }
     }
 
     /**

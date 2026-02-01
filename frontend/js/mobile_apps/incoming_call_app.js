@@ -383,7 +383,6 @@ function showHistoryPlaybackUI(container, call, createNavbar) {
 
             <div class="call-playback-buttons">
                 <button id="history-stop-btn" class="hangup-btn">⏹</button>
-                <button id="history-download-btn" class="call-download-btn">📥</button>
             </div>
         </div>
     `);
@@ -416,10 +415,6 @@ function showHistoryPlaybackUI(container, call, createNavbar) {
         endPlayback();
     });
 
-    // 下载按钮
-    $playbackContent.find('#history-download-btn').click(async function () {
-        await downloadAudio(call);
-    });
 
     // 开始播放
     if (call.audio_url) {

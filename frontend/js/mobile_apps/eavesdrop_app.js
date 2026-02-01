@@ -261,8 +261,7 @@ function showHistoryPlaybackUI(container, record, createNavbar) {
             </div>
 
             <div class="listening-playback-buttons">
-                <button id="listening-stop-btn" class="listening-stop-btn">⏹ 停止监听</button>
-                <button id="listening-download-btn" class="listening-download-btn">📥 下载</button>
+                <button id="listening-stop-btn" class="listening-stop-btn">■ 停止监听</button>
             </div>
         </div>
     `);
@@ -295,10 +294,6 @@ function showHistoryPlaybackUI(container, record, createNavbar) {
         endPlayback();
     });
 
-    // 下载按钮
-    $playbackContent.find('#listening-download-btn').click(async function () {
-        await downloadAudio(record);
-    });
 
     // 开始播放
     if (record.audio_url) {
