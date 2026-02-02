@@ -75,7 +75,7 @@ export class ContinuousAnalysisHandler {
         } catch (error) {
             console.error('[ContinuousAnalysisHandler] ❌ 分析失败:', error);
 
-            // 通知后端失败
+            // ✅ 通知后端失败，并附带原始响应数据
             await this.sendResultToBackend({
                 chat_branch,
                 floor,
@@ -84,7 +84,8 @@ export class ContinuousAnalysisHandler {
                 user_name,
                 char_name,
                 llm_response: null,
-                error: error.message
+                error: error.message,
+                raw_response: error.rawResponse ? JSON.stringify(error.rawResponse) : null  // ✅ 发送原始响应
             });
         }
     }

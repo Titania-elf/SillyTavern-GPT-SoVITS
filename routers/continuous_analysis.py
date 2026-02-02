@@ -26,10 +26,12 @@ class ContinuousAnalysisCompleteRequest(BaseModel):
     chat_branch: str
     floor: int
     context_fingerprint: str
-    llm_response: str
+    llm_response: Optional[str] = None  # ✅ 改为可选，允许前端在 LLM 失败时传 null
     speakers: List[str]
     user_name: Optional[str] = None  # 用户名，用于 Prompt 构建
     char_name: Optional[str] = None  # 主角色卡名称，用于 WebSocket 推送路由
+    error: Optional[str] = None  # ✅ 新增: 前端 LLM 调用错误信息
+    raw_response: Optional[str] = None  # ✅ 新增: 前端 LLM 原始响应（用于调试）
 
 
 class SmartTriggerEvaluateRequest(BaseModel):
@@ -76,7 +78,36 @@ async def complete_continuous_analysis(req: ContinuousAnalysisCompleteRequest):
         print(f"  - 楼层: {req.floor}")
         print(f"  - 分支: {req.chat_branch}")
         print(f"  - 说话人: {req.speakers}")
+        print(f"  - 用户名: {req.user_name}")
+        print(f"  - 角色名: {req.char_name}")
+        print(f"  - 上下文指纹: {req.context_fingerprint}")
         print(f"  - LLM 响应长度: {len(req.llm_response) if req.llm_response else 0}")
+        
+        # ✅ 如果前端 LLM 调用失败，打印完整错误信息
+        if req.error or not req.llm_response:
+            print(f"\n{'!'*60}")
+            print(f"[ContinuousAnalysis] ⚠️ 前端 LLM 调用失败!")
+            print(f"  - 错误信息: {req.error}")
+            print(f"  - 完整请求体:")
+            print(f"    chat_branch: {req.chat_branch}")
+            print(f"    floor: {req.floor}")
+            print(f"    context_fingerprint: {req.context_fingerprint}")
+            print(f"    speakers: {req.speakers}")
+            print(f"    user_name: {req.user_name}")
+            print(f"    char_name: {req.char_name}")
+            print(f"    llm_response: {req.llm_response}")
+            print(f"    error: {req.error}")
+            # ✅ 打印 LLM 原始响应
+            if req.raw_response:
+                print(f"\n  📦 LLM 原始响应:")
+                print(f"{req.raw_response}")
+            print(f"{'!'*60}\n")
+            
+            return {
+                "success": False,
+                "message": f"前端 LLM 调用失败: {req.error or '响应为空'}"
+            }
+        
         print(f"{'='*60}\n")
         
         # 保存分析结果 (返回包含 suggested_action 等信息)
