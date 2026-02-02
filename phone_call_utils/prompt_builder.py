@@ -248,36 +248,41 @@ class PromptBuilder:
     
     @staticmethod
     def build(
-        template: str = None,  # 如果为 None,使用默认模板
+        template: str = None,
         char_name: str = "", 
         context: List[Dict] = None, 
         extracted_data: Dict = None, 
         emotions: List[str] = None,
         max_context_messages: int = 20,
-        speakers: List[str] = None,  # 新增: 说话人列表
-        speakers_emotions: Dict[str, List[str]] = None,  # 新增: 说话人情绪映射
-        text_lang: str = "zh",  # 新增: 文本语言配置
-        extract_tag: str = "",  # 新增: 消息提取标签
-        filter_tags: str = "",  # 新增: 消息过滤标签
-        user_name: str = None,  # 新增: 用户名，用于区分用户身份
-        last_call_info: Dict = None  # 新增: 上次通话信息，用于二次电话
+        speakers: List[str] = None,
+        speakers_emotions: Dict[str, List[str]] = None,
+        text_lang: str = "zh",
+        extract_tag: str = "",
+        filter_tags: str = "",
+        user_name: str = None,
+        last_call_info: Dict = None,
+        call_reason: str = "",  # 新增: 打电话的原因
+        call_tone: str = ""  # 新增: 通话氛围
     ) -> str:
         """
         构建LLM提示词
         
         Args:
             template: 提示词模板
-            char_name: 角色名称 (保持兼容性)
+            char_name: 角色名称
             context: 对话上下文
             extracted_data: 提取的数据
-            emotions: 可用情绪列表 (保持兼容性)
-            max_context_messages: 最大上下文消息数(默认20)
+            emotions: 可用情绪列表
+            max_context_messages: 最大上下文消息数
             speakers: 说话人列表
-            speakers_emotions: 说话人情绪映射 {说话人: [情绪列表]}
-            text_lang: 文本语言配置 (zh/ja/en)
-            extract_tag: 消息提取标签(如 "conxt"),留空则不提取
-            filter_tags: 消息过滤标签(逗号分隔),如 "<small>, [statbar]"
-            last_call_info: 上次通话信息，用于二次电话差异化
+            speakers_emotions: 说话人情绪映射
+            text_lang: 文本语言配置
+            extract_tag: 消息提取标签
+            filter_tags: 消息过滤标签
+            user_name: 用户名
+            last_call_info: 上次通话信息
+            call_reason: 打电话的原因（由 LLM 分析得出）
+            call_tone: 通话氛围（如轻松闲聊、深情倾诉等）
             
         Returns:
             完整提示词
@@ -358,6 +363,23 @@ class PromptBuilder:
         # 新增: 替换上次通话和二次电话相关变量
         prompt = prompt.replace("{{last_call_summary}}", last_call_summary)
         prompt = prompt.replace("{{followup_call_instructions}}", followup_call_instructions)
+        
+        # 新增: 构建电话背景信息
+        call_context_section = ""
+        if call_reason or call_tone:
+            call_context_parts = ["\n**电话背景**:"]
+            if call_reason:
+                call_context_parts.append(f"- 打电话原因: {call_reason}")
+            if call_tone:
+                call_context_parts.append(f"- 通话氛围: {call_tone}")
+            call_context_parts.append("\n请根据以上背景生成自然的电话内容。\n")
+            call_context_section = "\n".join(call_context_parts)
+            print(f"[PromptBuilder] 📞 电话背景: reason={call_reason}, tone={call_tone}")
+        
+        prompt = prompt.replace("{{call_context}}", call_context_section)
+        # 如果模板中没有 {{call_context}} 占位符，在 {{context}} 后面插入
+        if call_context_section and "{{call_context}}" not in template:
+            prompt = prompt.replace("**Conversation History:**", f"**Conversation History:**\n{call_context_section}")
         
         print(f"[PromptBuilder] 构建提示词: {len(prompt)} 字符, {message_count} 条消息, {len(speakers)} 个说话人")
         

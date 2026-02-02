@@ -26,11 +26,12 @@ export class LLMRequestCoordinator {
     static async handleLLMRequest(data) {
         console.log('[LLMRequestCoordinator] 📥 收到 LLM 请求:', data);
 
-        const { call_id, char_name, prompt, llm_config, speakers, chat_branch } = data;
+        const { call_id, char_name, caller, prompt, llm_config, speakers, chat_branch } = data;
 
         try {
-            // 显示通知
-            this.showNotification(`正在为 ${char_name} 生成主动电话...`);
+            // 显示通知: 使用 caller（实际打电话的人），回退到 speakers[0] 或 char_name
+            const displayName = caller || (speakers && speakers[0]) || char_name;
+            this.showNotification(`正在为 ${displayName} 生成主动电话...`);
 
             // 调用 LLM
             console.log('[LLMRequestCoordinator] 🤖 调用 LLM...');

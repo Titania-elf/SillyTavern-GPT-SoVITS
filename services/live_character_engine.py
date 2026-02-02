@@ -37,13 +37,14 @@ class LiveCharacterEngine:
         
         print(f"[LiveCharacterEngine] 初始化完成 - 阈值: {self.threshold}")
     
-    def build_analysis_prompt(self, context: List[Dict], speakers: List[str]) -> str:
+    def build_analysis_prompt(self, context: List[Dict], speakers: List[str], call_history: List[Dict] = None) -> str:
         """
         构建开放式角色状态分析的LLM Prompt (含触发建议)
         
         Args:
             context: 对话上下文
             speakers: 说话人列表
+            call_history: 近期通话历史（可选）
             
         Returns:
             LLM Prompt
@@ -55,6 +56,28 @@ class LiveCharacterEngine:
         
         speakers_list = "、".join(speakers)
         
+        # 格式化通话历史
+        call_history_text = "无近期通话记录"
+        if call_history:
+            history_lines = []
+            for call in call_history[:5]:  # 最多5条
+                caller = call.get("char_name", "未知")
+                created_at = call.get("created_at", "")
+                # 提取通话内容摘要
+                segments = call.get("segments", [])
+                if isinstance(segments, str):
+                    import json
+                    try:
+                        segments = json.loads(segments)
+                    except:
+                        segments = []
+                content_preview = ""
+                if segments and isinstance(segments, list):
+                    texts = [s.get("translation") or s.get("text", "") for s in segments[:2] if isinstance(s, dict)]
+                    content_preview = "...".join(texts)[:50]
+                history_lines.append(f"- {caller}：{content_preview}...")
+            call_history_text = "\n".join(history_lines)
+        
         prompt = f"""
 请以JSON格式分析当前场景中每个角色的状态，并判断是否应该触发特殊事件。
 
@@ -63,6 +86,9 @@ class LiveCharacterEngine:
 
 # 需分析的角色
 {speakers_list}
+
+# 近期通话历史（供判断参考，避免重复）
+{call_history_text}
 
 # 分析要求
 对每个角色,请提供以下维度的分析:
@@ -92,13 +118,25 @@ class LiveCharacterEngine:
 - type: 行动类型(如phone_call, side_conversation, leave_scene等)
 - target: 行动对象(如果有)
 - reason: 原因
-- urgency: 紧迫度(1-10)
 
 # 场景触发建议
-根据当前场景状态,判断是否应该触发以下事件:
-- phone_call: 有角色离场且适合打电话给用户
-- eavesdrop: 多个角色在场,可能有私下对话（用户可以偷听）
-- none: 当前场景不适合触发任何事件
+
+## 电话触发判断（重要！）
+判断是否有角色想给用户打电话，**不限于离场场景**。以下情况都可能触发：
+- 角色离场后想联系用户
+- 角色在场但有特别想说的话（叮嘱、表白、倾诉）
+- 角色突然想起重要的事情
+- 角色想分享心情或轻松聊天
+- 角色处于强烈情绪中想要倾诉
+
+综合考虑：
+1. 当前场景是否适合来电
+2. 角色是否有话想说（不限类型）
+3. 参考上面的通话历史，避免相同角色短时间内重复打电话
+4. 如果多个角色都想打，选择当前场景下最合适的那个
+
+## 偷听触发判断
+当2+角色在场且可能有私下对话时触发
 
 # 输出格式
 {{
@@ -114,22 +152,23 @@ class LiveCharacterEngine:
     }},
     "scene_trigger": {{
         "suggested_action": "phone_call|eavesdrop|none",
-        "character_left": "离场角色名或null",
         "characters_present": ["在场角色列表"],
-        "private_conversation_likely": true/false,
         "reason": "简短解释判断原因",
         
-        // 以下字段仅在 suggested_action 为 "eavesdrop" 时需要填写:
+        // 电话触发详情（仅当 suggested_action 为 "phone_call" 时填写）
+        "phone_call_details": {{
+            "caller": "打电话的角色名",
+            "call_reason": "为什么要打这个电话（自然语言描述）",
+            "call_tone": "通话氛围（如：轻松闲聊、温柔叮嘱、深情倾诉、兴奋分享、担心关切等）"
+        }},
+        
+        // 偷听配置（仅当 suggested_action 为 "eavesdrop" 时填写）
         "eavesdrop_config": {{
-            "conversation_theme": "对话的核心主题，如：讨论用户的行为、角色之间的秘密等",
-            "conversation_outline": [
-                "对话第一阶段：开场，引出话题",
-                "对话第二阶段：深入讨论，揭示矛盾",
-                "对话第三阶段：情感高潮或结论"
-            ],
-            "dramatic_tension": "戏剧张力描述，如：暗流涌动的嫉妒、表面平静的竞争",
+            "conversation_theme": "对话的核心主题",
+            "conversation_outline": ["对话阶段1", "对话阶段2", "对话阶段3"],
+            "dramatic_tension": "戏剧张力描述",
             "hidden_information": "对话中可能透露的用户不知道的信息",
-            "emotional_arc": "情绪弧线，如：平静→紧张→爆发→缓和"
+            "emotional_arc": "情绪弧线"
         }}
     }}
 }}

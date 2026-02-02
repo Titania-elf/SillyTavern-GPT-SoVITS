@@ -84,8 +84,18 @@ class ContinuousAnalyzer:
         try:
             print(f"[ContinuousAnalyzer] 开始分析楼层 {floor}: {chat_branch}")
             
-            # 使用LiveCharacterEngine构建Prompt
-            prompt = self.live_engine.build_analysis_prompt(context, speakers)
+            # 查询历史通话记录（用于避免重复电话）
+            call_history = self.db.get_auto_call_history_by_chat_branch(chat_branch, limit=5)
+            if call_history:
+                print(f"[ContinuousAnalyzer] 📞 查询到 {len(call_history)} 条通话历史")
+            
+            # 查询历史分析记录（获取离场角色等信息）
+            last_analysis = self.db.get_latest_analysis(chat_branch)
+            if last_analysis:
+                print(f"[ContinuousAnalyzer] 📊 查询到最近分析记录: 楼层={last_analysis.get('floor')}")
+            
+            # 使用LiveCharacterEngine构建Prompt（传入通话历史）
+            prompt = self.live_engine.build_analysis_prompt(context, speakers, call_history)
             
             print(f"[ContinuousAnalyzer] 活人感分析Prompt已构建,等待 LLM 响应...")
             
@@ -154,9 +164,18 @@ class ContinuousAnalyzer:
             # 提取触发信息
             suggested_action = scene_trigger.get("suggested_action", "none")
             trigger_reason = scene_trigger.get("reason", "")
-            character_left = scene_trigger.get("character_left")
+            character_left = scene_trigger.get("character_left")  # 保持向后兼容
             
-            print(f"[ContinuousAnalyzer] 📊 分析结果: action={suggested_action}, reason={trigger_reason}")
+            # 提取电话触发详情（新格式）
+            phone_call_details = scene_trigger.get("phone_call_details") or {}  # ✅ 修复: 处理 null 值
+            # 新格式优先，兼容旧格式 character_left
+            caller = phone_call_details.get("caller") or character_left
+            call_reason = phone_call_details.get("call_reason") or trigger_reason
+            call_tone = phone_call_details.get("call_tone", "")
+            
+            print(f"[ContinuousAnalyzer] 📊 分析结果: action={suggested_action}")
+            if suggested_action == "phone_call" and caller:
+                print(f"[ContinuousAnalyzer] 📞 电话详情: caller={caller}, reason={call_reason}, tone={call_tone}")
             
             # 向后兼容:构建旧格式的characters_data
             characters_data = {}
@@ -227,10 +246,13 @@ class ContinuousAnalyzer:
                     "record_id": record_id,
                     "scene_trigger": scene_trigger,
                     "suggested_action": suggested_action,
-                    "character_left": character_left,
+                    "caller": caller,  # 打电话的角色（新格式或兼容旧格式）
+                    "call_reason": call_reason,  # 打电话原因
+                    "call_tone": call_tone,  # 通话氛围
                     "trigger_reason": trigger_reason,
-                    "present_characters": characters_present,  # ✅ 来自分析 LLM
-                    "eavesdrop_config": eavesdrop_config  # ✅ 对话主题和框架
+                    "present_characters": characters_present,
+                    "character_left": character_left,  # ✅ 修复: 添加离场角色
+                    "eavesdrop_config": eavesdrop_config
                 }
             else:
                 print(f"[ContinuousAnalyzer] ⚠️ 记录已存在或保存失败: 楼层={floor}")
