@@ -1244,22 +1244,8 @@ async function performUpdate() {
 }
 
 
-// ==================== GPT-SoVITS 安装向导 ====================
+// ==================== GPT-SoVITS 配置管理 ====================
 
-// 切换安装模式显示
-function toggleInstallMode() {
-    const mode = document.querySelector('input[name="install-mode"]:checked').value;
-    const manualSection = document.getElementById('manual-install-section');
-    const wizardSection = document.getElementById('wizard-install-section');
-
-    if (mode === 'manual') {
-        manualSection.style.display = 'block';
-        wizardSection.style.display = 'none';
-    } else {
-        manualSection.style.display = 'none';
-        wizardSection.style.display = 'block';
-    }
-}
 
 // 加载 GPT-SoVITS 配置
 async function loadSovitsConfig() {

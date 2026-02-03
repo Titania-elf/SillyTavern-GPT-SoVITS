@@ -90,15 +90,6 @@ export function getDashboardHTML(data) {
                             </select>
                             <div style="font-size:11px; color:#888; margin-top:4px;">对应 reference_audios 下的子文件夹</div>
                         </div>
-                        <div class="tts-input-row" style="margin-top:10px;">
-                            <span class="tts-input-label">模型路径</span>
-                            <input type="text" id="tts-base-path" class="tts-modern-input" value="${currentBase}" placeholder="绝对路径">
-                        </div>
-
-                        <div class="tts-input-row">
-                            <span class="tts-input-label">输出路径</span>
-                            <input type="text" id="tts-cache-path" class="tts-modern-input" value="${currentCache}" placeholder="绝对路径">
-                        </div>
 
                         <div style="text-align:right; margin-top:12px;">
                             <button id="tts-btn-save-paths" class="btn-primary">保存配置</button>

@@ -9,7 +9,7 @@ import subprocess
 import threading
 from pathlib import Path
 from typing import Optional
-from fastapi import APIRouter, HTTPException, WebSocket, BackgroundTasks
+from fastapi import APIRouter, HTTPException, WebSocket
 from pydantic import BaseModel
 
 router = APIRouter(prefix="/api/sovits", tags=["GPT-SoVITS 安装管理"])
@@ -17,6 +17,7 @@ router = APIRouter(prefix="/api/sovits", tags=["GPT-SoVITS 安装管理"])
 # 全局变量：GPT-SoVITS 进程
 sovits_process: Optional[subprocess.Popen] = None
 sovits_process_lock = threading.Lock()
+
 
 # 版本配置
 VERSION_CONFIGS = {
@@ -47,12 +48,6 @@ class SovitsConfig(BaseModel):
     install_path: str = ""
     auto_start: bool = True
     api_port: int = 9880
-
-
-class ExtractRequest(BaseModel):
-    archive_path: str
-    extract_to: str
-    delete_after: bool = True
 
 
 class StartServiceRequest(BaseModel):
@@ -113,54 +108,6 @@ async def update_config(config: SovitsConfig):
     """更新 GPT-SoVITS 配置"""
     save_sovits_config(config)
     return {"success": True, "message": "配置已保存"}
-
-
-@router.post("/extract")
-async def extract_archive(request: ExtractRequest, background_tasks: BackgroundTasks):
-    """解压 .7z 压缩包"""
-    archive_path = Path(request.archive_path)
-    extract_to = Path(request.extract_to)
-    
-    if not archive_path.exists():
-        raise HTTPException(status_code=404, detail=f"压缩包不存在: {archive_path}")
-    
-    if not archive_path.suffix.lower() == ".7z":
-        raise HTTPException(status_code=400, detail="仅支持 .7z 格式的压缩包")
-    
-    # 创建目标目录
-    extract_to.mkdir(parents=True, exist_ok=True)
-    
-    try:
-        import py7zr
-        
-        # 获取压缩包信息
-        with py7zr.SevenZipFile(archive_path, mode='r') as archive:
-            total_files = len(archive.getnames())
-        
-        # 解压
-        with py7zr.SevenZipFile(archive_path, mode='r') as archive:
-            archive.extractall(path=extract_to)
-        
-        # 删除压缩包
-        if request.delete_after:
-            archive_path.unlink()
-        
-        # 查找解压后的 GPT-SoVITS 目录
-        sovits_dir = None
-        for item in extract_to.iterdir():
-            if item.is_dir() and "GPT-SoVITS" in item.name:
-                sovits_dir = item
-                break
-        
-        return {
-            "success": True,
-            "message": f"解压完成，共 {total_files} 个文件",
-            "extracted_path": str(sovits_dir) if sovits_dir else str(extract_to),
-            "archive_deleted": request.delete_after
-        }
-        
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"解压失败: {str(e)}")
 
 
 @router.post("/start")
