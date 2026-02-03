@@ -1243,3 +1243,257 @@ async function performUpdate() {
     }
 }
 
+
+// ==================== GPT-SoVITS 安装向导 ====================
+
+// 切换安装模式显示
+function toggleInstallMode() {
+    const mode = document.querySelector('input[name="install-mode"]:checked').value;
+    const manualSection = document.getElementById('manual-install-section');
+    const wizardSection = document.getElementById('wizard-install-section');
+
+    if (mode === 'manual') {
+        manualSection.style.display = 'block';
+        wizardSection.style.display = 'none';
+    } else {
+        manualSection.style.display = 'none';
+        wizardSection.style.display = 'block';
+    }
+}
+
+// 加载 GPT-SoVITS 配置
+async function loadSovitsConfig() {
+    try {
+        const response = await fetch('/api/sovits/config');
+        if (!response.ok) return;
+
+        const data = await response.json();
+        const config = data.config;
+
+        if (config.install_path) {
+            document.getElementById('sovits-install-path').value = config.install_path;
+        }
+
+        if (config.version_type) {
+            const radio = document.querySelector(`input[name="gpu-type"][value="${config.version_type}"]`);
+            if (radio) radio.checked = true;
+        }
+
+        document.getElementById('sovits-auto-start').checked = config.auto_start !== false;
+
+        // 更新状态徽章
+        const statusBadge = document.getElementById('sovits-install-status');
+        if (config.installed && config.install_path) {
+            statusBadge.textContent = '已配置';
+            statusBadge.className = 'status-badge status-success';
+        } else {
+            statusBadge.textContent = '未配置';
+            statusBadge.className = 'status-badge status-warning';
+        }
+    } catch (error) {
+        console.error('加载 GPT-SoVITS 配置失败:', error);
+    }
+}
+
+// 保存 GPT-SoVITS 配置
+async function saveSovitsConfig() {
+    const config = {
+        installed: true,
+        version_type: document.querySelector('input[name="gpu-type"]:checked').value,
+        install_path: document.getElementById('sovits-install-path').value.trim(),
+        auto_start: document.getElementById('sovits-auto-start').checked,
+        api_port: 9880
+    };
+
+    if (!config.install_path) {
+        showNotification('请填写 GPT-SoVITS 安装路径', 'warning');
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/sovits/config', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(config)
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            showNotification('GPT-SoVITS 配置已保存', 'success');
+            loadSovitsConfig(); // 刷新状态
+        } else {
+            showNotification(data.detail || '保存失败', 'error');
+        }
+    } catch (error) {
+        console.error('保存配置失败:', error);
+        showNotification('保存配置失败', 'error');
+    }
+}
+
+// 解压 GPT-SoVITS 压缩包
+async function extractSovitsPackage() {
+    const archivePath = document.getElementById('sovits-archive-path').value.trim();
+    const extractTo = document.getElementById('sovits-extract-to').value.trim();
+
+    if (!archivePath) {
+        showNotification('请填写压缩包路径', 'warning');
+        return;
+    }
+
+    if (!extractTo) {
+        showNotification('请填写解压目标目录', 'warning');
+        return;
+    }
+
+    const progressDiv = document.getElementById('extract-progress');
+    const progressBar = document.getElementById('extract-progress-bar');
+    const progressText = document.getElementById('extract-progress-text');
+
+    progressDiv.style.display = 'block';
+    progressBar.style.width = '0%';
+    progressText.textContent = '正在解压，请稍候（文件较大，可能需要几分钟）...';
+
+    try {
+        const response = await fetch('/api/sovits/extract', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                archive_path: archivePath,
+                extract_to: extractTo,
+                delete_after: true
+            })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            progressBar.style.width = '100%';
+            progressText.textContent = `解压完成！路径: ${data.extracted_path}`;
+
+            // 自动填充安装路径
+            document.getElementById('sovits-install-path').value = data.extracted_path;
+
+            showNotification('解压完成！已自动填充安装路径', 'success');
+
+            // 切换到手动模式显示路径
+            document.querySelector('input[name="install-mode"][value="manual"]').checked = true;
+            toggleInstallMode();
+        } else {
+            progressText.textContent = '解压失败';
+            showNotification(data.detail || '解压失败', 'error');
+        }
+    } catch (error) {
+        console.error('解压失败:', error);
+        progressText.textContent = '解压失败';
+        showNotification('解压失败，请检查路径是否正确', 'error');
+    }
+}
+
+// 启动 GPT-SoVITS 服务
+async function startSovitsService() {
+    showNotification('正在启动 GPT-SoVITS 服务...', 'info');
+
+    try {
+        const response = await fetch('/api/sovits/start', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({})
+        });
+
+        const data = await response.json();
+
+        if (response.ok && data.success) {
+            showNotification(`GPT-SoVITS 服务已启动 (PID: ${data.pid})`, 'success');
+            // 刷新仪表盘状态
+            loadDashboard();
+            loadSovitsStatus();
+        } else {
+            showNotification(data.detail || data.message || '启动失败', 'error');
+        }
+    } catch (error) {
+        console.error('启动服务失败:', error);
+        showNotification('启动服务失败', 'error');
+    }
+}
+
+// 停止 GPT-SoVITS 服务
+async function stopSovitsService() {
+    showNotification('正在停止 GPT-SoVITS 服务...', 'info');
+
+    try {
+        const response = await fetch('/api/sovits/stop', {
+            method: 'POST'
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            showNotification('GPT-SoVITS 服务已停止', 'success');
+            // 刷新状态
+            loadDashboard();
+            loadSovitsStatus();
+        } else {
+            showNotification(data.message || '停止失败', 'warning');
+        }
+    } catch (error) {
+        console.error('停止服务失败:', error);
+        showNotification('停止服务失败', 'error');
+    }
+}
+
+// 测试 GPT-SoVITS 连接
+async function testSovitsConnection() {
+    showNotification('正在测试连接...', 'info');
+
+    try {
+        const response = await fetch('/api/sovits/test', {
+            method: 'POST'
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            showNotification(`连接成功！端口: ${data.port}`, 'success');
+        } else {
+            showNotification(data.message || '连接失败', 'error');
+        }
+    } catch (error) {
+        console.error('测试连接失败:', error);
+        showNotification('测试连接失败', 'error');
+    }
+}
+
+// 加载 GPT-SoVITS 服务状态
+async function loadSovitsStatus() {
+    try {
+        const response = await fetch('/api/sovits/status');
+        if (!response.ok) return;
+
+        const status = await response.json();
+
+        // 更新安装状态徽章
+        const statusBadge = document.getElementById('sovits-install-status');
+        if (status.api_reachable) {
+            statusBadge.textContent = '运行中';
+            statusBadge.className = 'status-badge status-success';
+        } else if (status.installed && status.install_path) {
+            statusBadge.textContent = '已配置';
+            statusBadge.className = 'status-badge status-warning';
+        } else {
+            statusBadge.textContent = '未配置';
+            statusBadge.className = 'status-badge';
+        }
+    } catch (error) {
+        console.error('加载 GPT-SoVITS 状态失败:', error);
+    }
+}
+
+// 页面加载时也加载 GPT-SoVITS 配置
+document.addEventListener('DOMContentLoaded', () => {
+    // 延迟加载，确保其他初始化完成
+    setTimeout(() => {
+        loadSovitsConfig();
+        loadSovitsStatus();
+    }, 500);
+});
