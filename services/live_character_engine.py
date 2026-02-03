@@ -306,15 +306,23 @@ class LiveCharacterEngine:
         if json_str.startswith('\ufeff'):
             json_str = json_str[1:]
         
-        # 2. 移除 JSON 对象/数组末尾的多余逗号
+        # 2. 移除 // 和 /* */ 风格的注释（LLM 有时会添加）
+        json_str = re.sub(r'//[^\n]*\n', '\n', json_str)
+        json_str = re.sub(r'/\*[\s\S]*?\*/', '', json_str)
+        
+        # 3. 移除 JSON 对象/数组末尾的多余逗号
         json_str = re.sub(r',(\s*[}\]])', r'\1', json_str)
         
-        # 3. 修复常见的布尔值问题 (True -> true, False -> false, None -> null)
+        # 4. 修复常见的布尔值问题 (True -> true, False -> false, None -> null)
         json_str = re.sub(r':\s*True\b', ': true', json_str)
         json_str = re.sub(r':\s*False\b', ': false', json_str)
         json_str = re.sub(r':\s*None\b', ': null', json_str)
         
-        # 4. 修复未加引号的字符串值 - 这是 LLM 最常见的错误
+        # 5. 修复缺少逗号的情况
+        # 模式: }\n{ 或 }\n"key" 或 ]\n[ 或 ]\n"value"
+        json_str = self._fix_missing_commas(json_str)
+        
+        # 6. 修复未加引号的字符串值 - 这是 LLM 最常见的错误
         # 处理模式: "key": 中文或其他非JSON值的内容
         # 例如: "对杜先生": 绝对服从、崇拜 -> "对杜先生": "绝对服从、崇拜"
         lines = json_str.split('\n')
@@ -325,6 +333,101 @@ class LiveCharacterEngine:
             fixed_lines.append(fixed_line)
         
         json_str = '\n'.join(fixed_lines)
+        
+        # 7. 尝试修复截断的 JSON（确保括号闭合）
+        json_str = self._fix_truncated_json(json_str)
+        
+        return json_str
+    
+    def _fix_missing_commas(self, json_str: str) -> str:
+        """
+        修复缺少逗号的常见情况
+        
+        常见模式:
+        - "value1"\n"key2" -> "value1",\n"key2"
+        - }\n"key" -> },\n"key"
+        - ]\n[ -> ],\n[
+        - }\n{ -> },\n{
+        - 数字后直接跟 "key"
+        """
+        import re
+        
+        # 模式1: 字符串值后缺少逗号，直接跟另一个key
+        # "value"\n   "key" -> "value",\n   "key"
+        json_str = re.sub(r'(")\s*\n(\s*"[^"]+"\s*:)', r'\1,\n\2', json_str)
+        
+        # 模式2: } 后缺少逗号，直接跟 "key"
+        # }\n   "key" -> },\n   "key"
+        json_str = re.sub(r'(\})\s*\n(\s*"[^"]+"\s*:)', r'\1,\n\2', json_str)
+        
+        # 模式3: ] 后缺少逗号，直接跟 "key"
+        # ]\n   "key" -> ],\n   "key"
+        json_str = re.sub(r'(\])\s*\n(\s*"[^"]+"\s*:)', r'\1,\n\2', json_str)
+        
+        # 模式4: } 后缺少逗号，直接跟 {
+        # }\n   { -> },\n   {
+        json_str = re.sub(r'(\})\s*\n(\s*\{)', r'\1,\n\2', json_str)
+        
+        # 模式5: ] 后缺少逗号，直接跟 [
+        # ]\n   [ -> ],\n   [
+        json_str = re.sub(r'(\])\s*\n(\s*\[)', r'\1,\n\2', json_str)
+        
+        # 模式6: 数字/布尔/null 后缺少逗号，直接跟 "key"
+        # 123\n   "key" -> 123,\n   "key"
+        json_str = re.sub(r'(\d+|true|false|null)\s*\n(\s*"[^"]+"\s*:)', r'\1,\n\2', json_str)
+        
+        # 模式7: 字符串值后缺少逗号，直接跟 { 或 [
+        # "value"\n   { -> "value",\n   {
+        json_str = re.sub(r'(")\s*\n(\s*[\[{])', r'\1,\n\2', json_str)
+        
+        return json_str
+    
+    def _fix_truncated_json(self, json_str: str) -> str:
+        """
+        修复被截断的 JSON，确保括号正确闭合
+        """
+        # 统计未闭合的括号
+        open_braces = 0
+        open_brackets = 0
+        in_string = False
+        escape_next = False
+        
+        for char in json_str:
+            if escape_next:
+                escape_next = False
+                continue
+            
+            if char == '\\':
+                escape_next = True
+                continue
+            
+            if char == '"':
+                in_string = not in_string
+                continue
+            
+            if in_string:
+                continue
+            
+            if char == '{':
+                open_braces += 1
+            elif char == '}':
+                open_braces -= 1
+            elif char == '[':
+                open_brackets += 1
+            elif char == ']':
+                open_brackets -= 1
+        
+        # 补齐缺失的闭合括号
+        if open_braces > 0 or open_brackets > 0:
+            # 如果 JSON 被截断在字符串中间，先闭合字符串
+            if in_string:
+                json_str += '"'
+            
+            # 补齐括号（先 ] 后 }）
+            json_str += ']' * max(0, open_brackets)
+            json_str += '}' * max(0, open_braces)
+            
+            print(f"[LiveCharacterEngine] ⚠️ 检测到截断的 JSON，补齐了 {open_brackets} 个 ] 和 {open_braces} 个 }}")
         
         return json_str
     

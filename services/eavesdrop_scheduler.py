@@ -143,11 +143,20 @@ class EavesdropScheduler:
             # 更新状态为 generating
             self.db.update_eavesdrop_status(record_id, "generating")
             
+            # 读取 TTS 配置中的语言设置（用于 Prompt 构建）
+            settings = load_json(SETTINGS_FILE) or {}
+            # ✅ 修复：正确路径是 settings["phone_call"]["tts_config"]，而不是 settings["tts"]
+            phone_call_config = settings.get("phone_call", {})
+            tts_config = phone_call_config.get("tts_config", {})
+            text_lang = tts_config.get("text_lang", "zh")
+            print(f"[EavesdropScheduler] 📋 TTS 语言配置 (from phone_call.tts_config): text_lang={text_lang}")
+            
             # 第一阶段: 构建prompt（使用分析 LLM 提供的对话主题和框架）
             result = await self.eavesdrop_service.build_prompt(
                 context=context,
                 speakers=speakers,
                 user_name=user_name,
+                text_lang=text_lang,  # ✅ 传递语言配置
                 scene_description=scene_description,
                 eavesdrop_config=eavesdrop_config  # ✅ 传递对话主题和框架
             )
@@ -170,10 +179,7 @@ class EavesdropScheduler:
             from services.notification_service import NotificationService
             notification_service = NotificationService()
             
-            # 读取 TTS 配置中的语言设置
-            settings = load_json(SETTINGS_FILE) or {}
-            tts_config = settings.get("tts", {})
-            text_lang = tts_config.get("text_lang", "zh")
+            # text_lang 已在上面读取，直接使用
             
             await notification_service.notify_eavesdrop_llm_request(
                 record_id=record_id,

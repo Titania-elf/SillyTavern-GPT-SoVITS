@@ -53,7 +53,7 @@ class EavesdropService:
         Returns:
             包含 prompt、speakers_emotions 等信息的字典
         """
-        print(f"[EavesdropService] 构建 Prompt: speakers={speakers}")
+        print(f"[EavesdropService] 构建 Prompt: speakers={speakers}, text_lang={text_lang}")
         
         if eavesdrop_config:
             print(f"[EavesdropService] 🎭 使用分析 LLM 提供的配置:")

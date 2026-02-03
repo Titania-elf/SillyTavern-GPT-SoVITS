@@ -333,6 +333,7 @@ class PromptBuilder:
         lang_info = PromptBuilder.LANG_MAP.get(text_lang, PromptBuilder.LANG_MAP["zh"])
         lang_name = lang_info["name"]
         lang_display = lang_info["display"]
+        print(f"[PromptBuilder] 🌐 build: text_lang={text_lang} -> lang_name={lang_name}, lang_display={lang_display}")
         
         # 处理上次通话摘要和二次电话指令
         last_call_summary = "无上次通话记录"
@@ -657,6 +658,7 @@ class PromptBuilder:
         # 获取语言显示
         lang_info = PromptBuilder.LANG_MAP.get(text_lang, PromptBuilder.LANG_MAP["zh"])
         lang_display = lang_info["display"]
+        print(f"[PromptBuilder] 🌐 build_eavesdrop_prompt: text_lang={text_lang} -> lang_display={lang_display}")
         
         # 根据是否有 eavesdrop_config 选择模板
         if eavesdrop_config:
