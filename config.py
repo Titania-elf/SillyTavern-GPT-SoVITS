@@ -75,11 +75,13 @@ def init_settings():
         "extract_tag": "",
         "filter_tags": "<small>, [statbar]"
     }
-    if "message_processing" not in settings:
+    # 类型安全检查：如果值不是字典，用默认值覆盖
+    if "message_processing" not in settings or not isinstance(settings["message_processing"], dict):
         settings["message_processing"] = message_processing_defaults
         dirty = True
     else:
-        settings["message_processing"] = deep_merge(message_processing_defaults, settings["message_processing"])
+        if deep_merge(message_processing_defaults, settings["message_processing"]):
+            dirty = True
 
     # phone_call 配置 - 使用深度合并,只补充缺失字段,不覆盖用户设置
     phone_call_defaults = {
@@ -131,7 +133,8 @@ def init_settings():
     }
 
     # 初始化或深度合并 phone_call 配置
-    if "phone_call" not in settings:
+    # 类型安全检查
+    if "phone_call" not in settings or not isinstance(settings["phone_call"], dict):
         settings["phone_call"] = phone_call_defaults
         dirty = True
     else:
@@ -155,7 +158,8 @@ def init_settings():
         }
     }
     
-    if "analysis_engine" not in settings:
+    # 类型安全检查
+    if "analysis_engine" not in settings or not isinstance(settings["analysis_engine"], dict):
         settings["analysis_engine"] = analysis_engine_defaults
         dirty = True
     else:
