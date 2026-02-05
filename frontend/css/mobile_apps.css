@@ -1101,7 +1101,8 @@
     overflow-y: auto;
     overflow-x: hidden;
     -webkit-overflow-scrolling: touch;
-    padding-bottom: 70px; /* 为底部导航留空间 */
+    padding-bottom: 70px;
+    /* 为底部导航留空间 */
 }
 
 /* 单个页面 */
@@ -1115,6 +1116,7 @@
         opacity: 0;
         transform: translateX(20px);
     }
+
     to {
         opacity: 1;
         transform: translateX(0);
@@ -1281,11 +1283,11 @@
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
-.settings-switch input:checked + .settings-switch-slider {
+.settings-switch input:checked+.settings-switch-slider {
     background: var(--s-play-bg, #34c759);
 }
 
-.settings-switch input:checked + .settings-switch-slider:before {
+.settings-switch input:checked+.settings-switch-slider:before {
     transform: translateX(20px);
 }
 
@@ -1517,6 +1519,47 @@
     transform: translateX(-50%) translateY(0);
 }
 
+/* 数值输入框样式 */
+.settings-item-input {
+    flex-direction: row;
+    align-items: center;
+}
+
+.settings-number-input-wrapper {
+    flex-shrink: 0;
+}
+
+.settings-number-input {
+    width: 70px;
+    padding: 10px 12px;
+    font-size: 16px;
+    font-weight: 600;
+    text-align: center;
+    border: 2px solid var(--s-wait-border, rgba(0, 0, 0, 0.1));
+    border-radius: 10px;
+    background: var(--s-load-bg, #f5f5f7);
+    color: var(--s-load-color, #333);
+    appearance: textfield;
+    -moz-appearance: textfield;
+    transition: all 0.2s ease;
+}
+
+.settings-number-input::-webkit-outer-spin-button,
+.settings-number-input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.settings-number-input:focus {
+    outline: none;
+    border-color: var(--s-play-color, #007aff);
+    box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.15);
+}
+
+.settings-number-input:invalid {
+    border-color: #ef4444;
+}
+
 /* 移动端响应式 */
 @media screen and (max-width: 768px) {
     .settings-tab-bar {
@@ -1533,6 +1576,12 @@
     .settings-select {
         background: rgba(30, 30, 30, 0.8);
         border: 1px solid var(--s-wait-border, #444);
+        color: var(--s-load-color, #fff);
+    }
+
+    .settings-number-input {
+        background: rgba(30, 30, 30, 0.8);
+        border: 2px solid var(--s-wait-border, #444);
         color: var(--s-load-color, #fff);
     }
 

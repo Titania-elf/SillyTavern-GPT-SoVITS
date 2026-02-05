@@ -7,7 +7,8 @@ export const TTS_State = {
         settings: {
             auto_generate: true,
             enabled: true,
-            iframe_mode: false // 显式初始化
+            iframe_mode: false, // 显式初始化
+            temperature: 1 // TTS 温度参数，范围 0~2，默认值 1
         },
         audioMemory: {},
         pendingTasks: new Set(),

@@ -8,7 +8,8 @@ const PAGES = [
     { id: 'basic', icon: '⚙️', name: '基础' },
     { id: 'network', icon: '🌐', name: '连接' },
     { id: 'appearance', icon: '🎨', name: '外观' },
-    { id: 'binding', icon: '🔗', name: '绑定' }
+    { id: 'binding', icon: '🔗', name: '绑定' },
+    { id: 'advanced', icon: '🔧', name: '高级' }
 ];
 
 // 当前页面状态
@@ -118,6 +119,9 @@ function renderPage($container, pageId, CTX) {
             break;
         case 'binding':
             renderBindingPage($container, settings, CTX);
+            break;
+        case 'advanced':
+            renderAdvancedPage($container, settings);
             break;
     }
 }
@@ -351,7 +355,114 @@ function renderBindingPage($container, settings, CTX) {
     bindBindingEvents(CTX);
 }
 
+/**
+ * 高级设置页面
+ */
+function renderAdvancedPage($container, settings) {
+    // 获取当前温度值，默认为 1
+    const currentTemperature = settings.temperature !== undefined ? settings.temperature : 1;
+
+    const html = `
+        <div class="settings-page">
+            <div class="settings-section">
+                <div class="settings-section-title">语音合成参数</div>
+                
+                <div class="settings-item settings-item-input">
+                    <div class="settings-item-content">
+                        <div class="settings-item-title">Temperature (温度)</div>
+                        <div class="settings-item-desc">控制语音生成的随机性，范围 0~2</div>
+                    </div>
+                    <div class="settings-number-input-wrapper">
+                        <input type="number"
+                               id="tts-temperature-input"
+                               class="settings-number-input"
+                               value="${currentTemperature}"
+                               min="0"
+                               max="2"
+                               step="0.1"
+                               inputmode="decimal">
+                    </div>
+                </div>
+            </div>
+
+            <div class="settings-section settings-info-box">
+                <div class="settings-info-icon">💡</div>
+                <div class="settings-info-text">
+                    <strong>温度参数说明：</strong><br>
+                    • 较低值 (0~0.5): 输出更稳定、一致<br>
+                    • 中等值 (0.5~1.0): 平衡稳定性与多样性<br>
+                    • 较高值 (1.0~2.0): 输出更有变化、创意
+                </div>
+            </div>
+        </div>
+    `;
+
+    $container.html(html);
+    bindAdvancedEvents();
+}
+
 // ===================== 事件绑定函数 =====================
+
+/**
+ * 高级设置事件绑定
+ */
+function bindAdvancedEvents() {
+    const CTX = window.TTS_UI.CTX;
+    let saveTimeout = null;
+
+    $('#tts-temperature-input').off('input change').on('input change', async function () {
+        let value = parseFloat($(this).val());
+
+        // 检查是否为有效数字
+        if (isNaN(value)) {
+            return;
+        }
+
+        // 范围限制
+        if (value < 0) {
+            value = 0;
+            $(this).val(value);
+        }
+        if (value > 2) {
+            value = 2;
+            $(this).val(value);
+        }
+
+        // 防抖保存 - 500ms 后执行
+        if (saveTimeout) {
+            clearTimeout(saveTimeout);
+        }
+
+        saveTimeout = setTimeout(async () => {
+            try {
+                // 更新缓存
+                if (CTX.CACHE && CTX.CACHE.settings) {
+                    CTX.CACHE.settings.temperature = value;
+                }
+
+                // 保存到后端
+                if (window.TTS_API && window.TTS_API.updateSettings) {
+                    await window.TTS_API.updateSettings({ temperature: value });
+                }
+
+                showToast(`✅ 温度已设为 ${value}`);
+            } catch (e) {
+                console.error("保存温度参数失败", e);
+                showToast('❌ 保存失败');
+            }
+        }, 500);
+    });
+
+    // 失去焦点时确保值在范围内
+    $('#tts-temperature-input').off('blur').on('blur', function () {
+        let value = parseFloat($(this).val());
+        if (isNaN(value) || value < 0) {
+            $(this).val(0);
+        } else if (value > 2) {
+            $(this).val(2);
+        }
+    });
+}
 
 function bindBasicEvents() {
     const CTX = window.TTS_UI.CTX;
